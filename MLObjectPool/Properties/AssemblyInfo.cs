@@ -1,15 +1,16 @@
-﻿using System.Reflection;
+﻿using System.Runtime.InteropServices;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 // Information about this assembly is defined by the following attributes. 
 // Change them to the values specific to your project.
 
 [assembly: AssemblyTitle("MLObjectPool")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyDescription("An object pool for Unity game engine")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("")]
-[assembly: AssemblyCopyright("")]
+[assembly: AssemblyProduct("MLObjectPool")]
+[assembly: AssemblyCopyright("© 2020 Ghostyii")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -17,7 +18,9 @@ using System.Runtime.CompilerServices;
 // The form "{Major}.{Minor}.*" will automatically update the build and revision,
 // and "{Major}.{Minor}.{Build}.*" will update just the revision.
 
-[assembly: AssemblyVersion("1.0.*")]
+[assembly: AssemblyVersion("1.0.3")]
+[assembly: AssemblyFileVersion("1.0.0")]
+[assembly: ComVisible(true)]
 
 // The following attributes are used to specify the signing key for the assembly, 
 // if desired. See the Mono documentation for more information about signing.

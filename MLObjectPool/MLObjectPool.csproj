@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -29,11 +29,11 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="UnityEditor">
-      <HintPath>..\..\..\..\..\..\Applications\Unity\Hub\Editor\2019.2.21f1\Unity.app\Contents\Managed\UnityEditor.dll</HintPath>
+      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.3.0f6\Editor\Data\Managed\UnityEditor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\..\Applications\Unity\Hub\Editor\2019.2.21f1\Unity.app\Contents\Managed\UnityEngine.dll</HintPath>
+      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.3.0f6\Editor\Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -52,12 +52,6 @@
     <Compile Include="Editor\ObjectPoolEditor.cs" />
     <Compile Include="Editor\PoolObjectEditor.cs" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Script\" />
-    <Folder Include="Script\Core\" />
-    <Folder Include="Script\Static\" />
-    <Folder Include="Script\Classes\" />
-    <Folder Include="Editor\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

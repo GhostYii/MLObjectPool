@@ -3,7 +3,7 @@
     public abstract class PoolBase
     {
         protected bool autoExpand = true;
-        protected int size = 10;
+        protected int size = 0;
 
         /// <summary>
         /// 自动拓展对象池容量
