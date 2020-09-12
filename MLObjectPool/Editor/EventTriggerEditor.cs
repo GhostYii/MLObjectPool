@@ -1,8 +1,12 @@
 ﻿namespace MLObjectPool.Editor
 {
     using MLObjectPool;
+    using System;
+    using System.Collections.Generic;
     using UnityEditor;
+    using UnityEditor.Events;
     using UnityEngine;
+    using UnityEngine.Events;
 
     [CustomEditor(typeof(EventTrigger))]
     public class EventTriggerEditor : Editor
@@ -16,12 +20,28 @@
         private bool onAAllocationEnabled = false;
         private bool onARecycleEnabled = false;
 
+        private List<EventTriggerType> eventNames = new List<EventTriggerType>();
+        private List<EventTriggerType> enabledEvents = new List<EventTriggerType>();
+        //private Dictionary<EventTriggerType, bool> eventMap = new Dictionary<EventTriggerType, bool>();
+
         private GUIContent iconToolbarMinus;
 
         protected virtual void OnEnable()
         {
             script = script ?? target as EventTrigger;
             iconToolbarMinus = new GUIContent(EditorGUIUtility.IconContent("Toolbar Minus"));
+
+            int count = Enum.GetNames(typeof(EventTriggerType)).Length;
+            if (eventNames.Count != count)
+            {
+                for (int i = 0; i < count; i++)
+                {
+                    if (!eventNames.Contains((EventTriggerType)i))
+                        eventNames.Add((EventTriggerType)i);
+                }
+            }
+
+            Log.Print(eventNames.Count.ToString());
         }
 
         public override void OnInspectorGUI()
@@ -35,7 +55,7 @@
                 {
                     GenericMenu menu = new GenericMenu();
                     if (!onAllocationEnabled)
-                        menu.AddItem(new GUIContent("OnAllocaton"), false, () => onAllocationEnabled = true);
+                        menu.AddItem(new GUIContent("OnAllocaton"), false, () =>  onAllocationEnabled= true);
                     if (!onRecycleEnabled)
                         menu.AddItem(new GUIContent("OnRecycle"), false, () => onRecycleEnabled = true);
                     if (!onBAllocationEnabled)
@@ -55,7 +75,7 @@
             {
                 DrawProperty("onAllocation", () =>
                 {
-                    script.onAllocation.RemoveAllListeners();
+                    RemoveAllListener(script.onAllocation);
                     onAllocationEnabled = false;
                 });
             }
@@ -64,7 +84,7 @@
             {
                 DrawProperty("onRecycle", () =>
                 {
-                    script.onRecycle.RemoveAllListeners();
+                    RemoveAllListener(script.onRecycle);
                     onRecycleEnabled = false;
                 });
             }
@@ -73,7 +93,7 @@
             {
                 DrawProperty("onBeforeAllocation", () =>
                 {
-                    script.onBeforeAllocation.RemoveAllListeners();
+                    RemoveAllListener(script.onBeforeAllocation);
                     onBAllocationEnabled = false;
                 });
             }
@@ -82,7 +102,7 @@
             {
                 DrawProperty("onBeforeRecycle", () =>
                 {
-                    script.onBeforeRecycle.RemoveAllListeners();
+                    RemoveAllListener(script.onBeforeRecycle);
                     onBRecycleEnabled = false;
                 });
             }
@@ -91,7 +111,7 @@
             {
                 DrawProperty("onAfterAllocation", () =>
                 {
-                    script.onAfterAllocation.RemoveAllListeners();
+                    RemoveAllListener(script.onAfterAllocation);
                     onAAllocationEnabled = false;
                 });
             }
@@ -100,7 +120,7 @@
             {
                 DrawProperty("onAfterRecycle", () =>
                 {
-                    script.onAfterRecycle.RemoveAllListeners();
+                    RemoveAllListener(script.onAfterRecycle);
                     onARecycleEnabled = false;
                 });
             }
@@ -120,6 +140,15 @@
                 onButton();
                 Repaint();
             }
+        }
+
+        private void RemoveAllListener(UnityEvent uEvent)
+        {
+            uEvent.RemoveAllListeners();
+
+            while (uEvent.GetPersistentEventCount() > 0)
+                UnityEventTools.RemovePersistentListener(uEvent, 0);
+
         }
     }
 }
