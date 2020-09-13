@@ -22,7 +22,6 @@
 
         private List<EventTriggerType> eventNames = new List<EventTriggerType>();
         private List<EventTriggerType> enabledEvents = new List<EventTriggerType>();
-        //private Dictionary<EventTriggerType, bool> eventMap = new Dictionary<EventTriggerType, bool>();
 
         private GUIContent iconToolbarMinus;
 
@@ -40,8 +39,6 @@
                         eventNames.Add((EventTriggerType)i);
                 }
             }
-
-            Log.Print(eventNames.Count.ToString());
         }
 
         public override void OnInspectorGUI()
