@@ -3,15 +3,15 @@
     using MLObjectPool;
     using UnityEditor;
 
-    [CustomEditor(typeof(ObjectPool))]
+    [CustomEditor(typeof(ObjectPoolManager))]
     public class ObjectPoolEditor : Editor
     {
         private bool foldout = true;
-        private ObjectPool script = null;
+        private ObjectPoolManager script = null;
 
         private void OnEnable()
         {
-            script = script ?? target as ObjectPool;
+            script = script ?? target as ObjectPoolManager;
         }
 
         public override void OnInspectorGUI()
@@ -30,14 +30,21 @@
                         EditorGUILayout.LabelField($"[{item} Pool]: ");
                         EditorGUI.indentLevel++;
                         EditorGUILayout.LabelField($"Size:{ pool.Size}");
-                        EditorGUILayout.LabelField($"Auto Expand:{ pool.AutoExpand}");
                         EditorGUILayout.LabelField($"Allocation Count:{pool.Size - pool.GetSpawnedObjectCount()}");
+                        OnInsoectorInfoGUI(pool);
                         EditorGUI.indentLevel--;
                     }
                 }
             }
+            EditorGUILayout.EndFoldoutHeaderGroup();
+
             serializedObject.ApplyModifiedProperties();
             Repaint();
+        }
+
+        protected virtual void OnInsoectorInfoGUI(PoolBase pool)
+        {
+            EditorGUILayout.LabelField($"Auto Expand:{ pool.AutoExpand}");
         }
     }
 }

@@ -18,18 +18,75 @@ ObjectPool.Instance.AllocationFromPool(string name);
 ObjectPool.Instance.RecycleFromPool<T>(string name, T obj);
 ```
 
+## Pool\<T>
+Pool\<T> is the general pool in MLObjectPool.  
+### Create
+```csharp
+//create by pool manager
+var goPool = ObjectPoolManager.Instance.CreatePool<GameObject>("gameObject", 100, true);
+
+//create by constructor
+var goPool = new Pool<GameObject>(100, true);
+ObjectPoolManager.Instance.AddPool("gameObject", goPool);
+```
+
+### Allocation
+```csharp
+public override object Allocation(bool isExpand);
+public T Allocation();
+public T[] Allocation(int size);
+```
+
+### Recycle
+```csharp
+public override bool Recycle(object obj, Type type);
+public bool Recycle(T obj);
+public bool Recycle(T[] objs);
+```
+
+## PrefabPool
+### Create
+```csharp
+//create by pool manager
+var prefabPool = ObjectPoolManager.Instance.CreatePrefabPool("prefab", prefab, 100, true);
+
+//create by constructor
+var prefabPool = new PrefabPool(prefab, 100, true);
+ObjectPoolManager.Instance.AddPool("prefab", prefabPool);
+```
+
+### Allocation
+```csharp
+public GameObject Allocation();
+public GameObject[] Allocation(int size);
+public override object Allocation(bool isExpand);
+```
+
+### Recycle
+```csharp
+public bool Recycle(GameObject obj);
+public override bool Recycle(object obj, Type type);
+public bool Recycle(GameObject[] objs);
+```
+
 ## Can I define my pool ?
 Yes.  
 You can create your pool by inherit class '**PoolBase**'.
 
 ## Interfaces
-MLObjectPool support the '**IPoolObjectBeforeHandler**','**IPoolObjectHandler**','**IPoolObjectAfterHandler**'.  
-- IPoolObjectBeforeHandler  
-This interface's method will be called before the pool allocation/recycle.
-- IPoolObjectHandler  
-This interface's method will be called on object pool allocation/recycle.  
-- IPoolObjectAfterHandler  
-This interface's method will be called after the pool allocation/recycle.
+MLObjectPool support the '**IAllocationHandler**','**IRecycleHandler**','**IBeforeAllocationHandler**','**IBeforeAllocationHandler**','**IAfterAllocationHandler**','**IAfterRecycleHandler**'.  
+- IAllocationHandler  
+This interface's method will be called on object pool allocation.
+- IRecycleHandler  
+This interface's method will be called on object pool recycle. 
+- IBeforeAllocationHandler  
+This interface's method will be called before the pool allocation.
+- IBeforeRecycleHandler  
+This interface's method will be called before the pool recycle.
+- IAfterAllocationHandler  
+This interface's method will be called after the pool allocation.
+- IAfterRecycleHandler  
+This interface's method will be called after the pool recycle.
 
 ### Call sequence:  
 [Allocation Step]  
@@ -37,6 +94,9 @@ OnBeforeAllocation -> OnAllocation/DefaultAllocation -> OnAfterAllocation
 
 [Recycle Step]  
 OnBeforeRecycle -> OnRecycle/DefaultRecycle -> OnAfterRecycle
+
+[**NOTITION**]  
+**If pool object implement the 'IAllocationHandler' or 'IRecycleHandler', the default allocation/recycle method will not called.**
 
 ### Default Allocation/Recycle
 If pool object dont implement IPoolObjectHandler, it will invoke the method as follow(take PrefabPool as an example):
@@ -63,5 +123,6 @@ You can implement interface in any script (just like IPointEnterHandler).
 
 If you have your custom pool, you may consider to support those interfaces.
 
-## PoolObject
-PoolObject is a Mono script. It just implement the IPoolObjectHandler interface.
+## Pool Event Trigger
+PoolEventTrigger is a Mono script. It just implement all interfaces in MLObjectPool.  
+Useage just like the EventTrigger in uGUI.

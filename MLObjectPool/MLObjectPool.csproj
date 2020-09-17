@@ -29,11 +29,11 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="UnityEditor">
-      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.3.0f6\Editor\Data\Managed\UnityEditor.dll</HintPath>
+      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.4.9f1\Editor\Data\Managed\UnityEditor.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.3.0f6\Editor\Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.4.9f1\Editor\Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -41,17 +41,18 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Script\Classes\EventTriggerType.cs" />
     <Compile Include="Script\Core\Interfaces.cs" />
+    <Compile Include="Script\Core\PrefabPoolObject.cs" />
     <Compile Include="Script\Singeton.cs" />
     <Compile Include="Script\Static\Log.cs" />
     <Compile Include="Script\Classes\Constant.cs" />
-    <Compile Include="Script\Core\ObjectPool.cs" />
+    <Compile Include="Script\Core\ObjectPoolManager.cs" />
     <Compile Include="Script\Core\PoolBase.cs" />
     <Compile Include="Script\Core\Pool.cs" />
     <Compile Include="Script\Classes\PoolObjectInfo.cs" />
     <Compile Include="Script\Core\PrefabPool.cs" />
-    <Compile Include="Script\Core\EventTrigger.cs" />
+    <Compile Include="Script\Core\PoolEventTrigger.cs" />
     <Compile Include="Editor\ObjectPoolEditor.cs" />
-    <Compile Include="Editor\EventTriggerEditor.cs" />
+    <Compile Include="Editor\PoolEventTriggerEditor.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

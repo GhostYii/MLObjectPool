@@ -13,16 +13,9 @@
     {
         protected EventTrigger script = null;
 
-        private bool onAllocationEnabled = false;
-        private bool onRecycleEnabled = false;
-        private bool onBAllocationEnabled = false;
-        private bool onBRecycleEnabled = false;
-        private bool onAAllocationEnabled = false;
-        private bool onARecycleEnabled = false;
-
         private List<EventTriggerType> eventNames = new List<EventTriggerType>();
         private List<EventTriggerType> enabledEvents = new List<EventTriggerType>();
-        //private Dictionary<EventTriggerType, bool> eventMap = new Dictionary<EventTriggerType, bool>();
+        private List<EventTriggerType> removableEvents = new List<EventTriggerType>();
 
         private GUIContent iconToolbarMinus;
 
@@ -40,95 +33,51 @@
                         eventNames.Add((EventTriggerType)i);
                 }
             }
-
-            Log.Print(eventNames.Count.ToString());
         }
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
 
-            if (!onAllocationEnabled || !onRecycleEnabled || !onBAllocationEnabled
-                || !onBRecycleEnabled || !onAAllocationEnabled || !onARecycleEnabled)
+            foreach (var e in removableEvents)            
+                enabledEvents.Remove(e);
+            removableEvents.Clear();
+
+            if (enabledEvents.Count != eventNames.Count)
             {
                 if (GUILayout.Button("Add Pool Event"))
                 {
                     GenericMenu menu = new GenericMenu();
-                    if (!onAllocationEnabled)
-                        menu.AddItem(new GUIContent("OnAllocaton"), false, () =>  onAllocationEnabled= true);
-                    if (!onRecycleEnabled)
-                        menu.AddItem(new GUIContent("OnRecycle"), false, () => onRecycleEnabled = true);
-                    if (!onBAllocationEnabled)
-                        menu.AddItem(new GUIContent("OnBeforeAllocation"), false, () => onBAllocationEnabled = true);
-                    if (!onBRecycleEnabled)
-                        menu.AddItem(new GUIContent("OnBeforeRecycle"), false, () => onBRecycleEnabled = true);
-                    if (!onAAllocationEnabled)
-                        menu.AddItem(new GUIContent("OnAfterAllocation"), false, () => onAAllocationEnabled = true);
-                    if (!onARecycleEnabled)
-                        menu.AddItem(new GUIContent("OnAfterRecycle"), false, () => onARecycleEnabled = true);
+                    if (!enabledEvents.Contains(EventTriggerType.Allocation))
+                        menu.AddItem(new GUIContent("Allocaton"), false, ()=>enabledEvents.Add(EventTriggerType.Allocation));
+                    if (!enabledEvents.Contains(EventTriggerType.Recycle))
+                        menu.AddItem(new GUIContent("Recycle"), false, () => enabledEvents.Add(EventTriggerType.Recycle));
+                    if (!enabledEvents.Contains(EventTriggerType.BeforeAllocation))
+                        menu.AddItem(new GUIContent("BeforeAllocation"), false, () => enabledEvents.Add(EventTriggerType.BeforeAllocation));
+                    if (!enabledEvents.Contains(EventTriggerType.BeforeRecycle))
+                        menu.AddItem(new GUIContent("BeforeRecycle"), false, () => enabledEvents.Add(EventTriggerType.BeforeRecycle));
+                    if (!enabledEvents.Contains(EventTriggerType.AfterAllocation))
+                        menu.AddItem(new GUIContent("AfterAllocation"), false, () => enabledEvents.Add(EventTriggerType.AfterAllocation));
+                    if (!enabledEvents.Contains(EventTriggerType.AfterRecycle))
+                        menu.AddItem(new GUIContent("AfterRecycle"), false, () => enabledEvents.Add(EventTriggerType.AfterRecycle));
 
                     menu.ShowAsContext();
                 }
             }
 
-            if (onAllocationEnabled)
+            foreach (var e in enabledEvents)
             {
-                DrawProperty("onAllocation", () =>
+                DrawProperty($"on{e}", () =>
                 {
-                    RemoveAllListener(script.onAllocation);
-                    onAllocationEnabled = false;
-                });
-            }
-
-            if (onRecycleEnabled)
-            {
-                DrawProperty("onRecycle", () =>
-                {
-                    RemoveAllListener(script.onRecycle);
-                    onRecycleEnabled = false;
-                });
-            }
-
-            if (onBAllocationEnabled)
-            {
-                DrawProperty("onBeforeAllocation", () =>
-                {
-                    RemoveAllListener(script.onBeforeAllocation);
-                    onBAllocationEnabled = false;
-                });
-            }
-
-            if (onBRecycleEnabled)
-            {
-                DrawProperty("onBeforeRecycle", () =>
-                {
-                    RemoveAllListener(script.onBeforeRecycle);
-                    onBRecycleEnabled = false;
-                });
-            }
-
-            if (onAAllocationEnabled)
-            {
-                DrawProperty("onAfterAllocation", () =>
-                {
-                    RemoveAllListener(script.onAfterAllocation);
-                    onAAllocationEnabled = false;
-                });
-            }
-
-            if (onARecycleEnabled)
-            {
-                DrawProperty("onAfterRecycle", () =>
-                {
-                    RemoveAllListener(script.onAfterRecycle);
-                    onARecycleEnabled = false;
+                    RemoveAllListener(e);
+                    removableEvents.Add(e);
                 });
             }
 
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void DrawProperty(string name, System.Action onButton)
+        private void DrawProperty(string name, Action onCloseButton)
         {
             EditorGUILayout.PropertyField(serializedObject.FindProperty(name));
             Rect rect = GUILayoutUtility.GetLastRect();
@@ -137,9 +86,38 @@
             rect.height = 20;
             if (GUI.Button(rect, iconToolbarMinus, GUIStyle.none))
             {
-                onButton();
+                onCloseButton();
                 Repaint();
             }
+        }
+
+        private void RemoveAllListener(EventTriggerType type)
+        {
+            UnityEvent e = null;
+            switch (type)
+            {
+                case EventTriggerType.Allocation:
+                    e = script.onAllocation;
+                    break;
+                case EventTriggerType.Recycle:
+                    e = script.onRecycle;
+                    break;
+                case EventTriggerType.BeforeAllocation:
+                    e = script.onBeforeAllocation;
+                    break;
+                case EventTriggerType.BeforeRecycle:
+                    e = script.onBeforeRecycle;
+                    break;
+                case EventTriggerType.AfterAllocation:
+                    e = script.onAfterAllocation;
+                    break;
+                case EventTriggerType.AfterRecycle:
+                    e = script.onAfterRecycle;
+                    break;
+                default:
+                    break;
+            }
+            RemoveAllListener(e);
         }
 
         private void RemoveAllListener(UnityEvent uEvent)

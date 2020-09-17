@@ -15,7 +15,7 @@ namespace MLObjectPool
         // ReSharper disable once StaticMemberInGenericType
         private static readonly object Lock = new object();
 
-        public bool _persistent = true;
+        public bool _persistent = false;
         #endregion
 
         #region  Properties

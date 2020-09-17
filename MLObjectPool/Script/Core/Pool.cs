@@ -46,14 +46,15 @@ namespace MLObjectPool
             else
             {
                 T obj = new T();
-                if (obj is IPoolObjectBeforeHandler)
-                    (obj as IPoolObjectBeforeHandler).OnBeforeAllocation();
 
-                if (obj is IPoolObjectHandler)
-                    (obj as IPoolObjectHandler).OnAllocation();
+                if (obj is IBeforeAllocationHandler)
+                    (obj as IBeforeAllocationHandler).OnBeforeAllocation(this);
 
-                if (obj is IPoolObjectAfterHandler)
-                    (obj as IPoolObjectAfterHandler).OnAfterAllocation();
+                if (obj is IAllocationHanlder)
+                    (obj as IAllocationHanlder).OnAllocation(this);
+
+                if (obj is IAfterAllocationHandler)
+                    (obj as IAfterAllocationHandler).OnAfterAllocation(this);
 
                 return obj;
             }
@@ -76,17 +77,16 @@ namespace MLObjectPool
         {
             T obj = GetObject();
 
-            if (obj is IPoolObjectBeforeHandler)
-                (obj as IPoolObjectBeforeHandler).OnBeforeAllocation();
+            if (obj is IBeforeAllocationHandler)
+                (obj as IBeforeAllocationHandler).OnBeforeAllocation(this);
 
             if (infoMap.ContainsKey(obj))
                 infoMap[obj].Allocation();
+            if (obj is IAllocationHanlder)
+                (obj as IAllocationHanlder).OnAllocation(this);
 
-            if (obj is IPoolObjectHandler)
-                (obj as IPoolObjectHandler).OnAllocation();
-
-            if (obj is IPoolObjectAfterHandler)
-                (obj as IPoolObjectAfterHandler).OnAfterAllocation();
+            if (obj is IAfterAllocationHandler)
+                (obj as IAfterAllocationHandler).OnAfterAllocation(this);
 
             spawnedObjects.Add(obj);
 
@@ -108,18 +108,18 @@ namespace MLObjectPool
             {
                 if (spawnedObjects.Contains(obj))
                 {
-                    if (obj is IPoolObjectBeforeHandler)
-                        (obj as IPoolObjectBeforeHandler).OnBeforeRecycle();
+                    if (obj is IBeforeRecycleHandler)
+                        (obj as IBeforeRecycleHandler).OnBeforeRecycle(this);
 
                     if (infoMap.ContainsKey(obj))
                         infoMap[obj].Recycle();
-                    if (obj is IPoolObjectHandler)
-                        (obj as IPoolObjectHandler).OnRecycle();
+                    if (obj is IRecycleHandler)
+                        (obj as IRecycleHandler).OnRecycle(this);
 
                     spawnedObjects.Remove(obj);
 
-                    if (obj is IPoolObjectAfterHandler)
-                        (obj as IPoolObjectAfterHandler).OnAfterRecycle();
+                    if (obj is IAfterRecycleHandler)
+                        (obj as IAfterRecycleHandler).OnAfterRecycle(this);
 
                     return true;
                 }
@@ -149,6 +149,16 @@ namespace MLObjectPool
             }
 
             return allRecylced;
+        }
+
+        public bool RecycleAll()
+        {
+            bool ack = true;
+            List<T> tmpLst = new List<T>(spawnedObjects);
+            foreach (var obj in tmpLst)
+                ack = Recycle(obj) && ack;
+
+            return ack;
         }
 
         private T GetObject()

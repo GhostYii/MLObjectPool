@@ -1,20 +1,32 @@
 ﻿namespace MLObjectPool
 {
-    public interface IPoolObjectBeforeHandler
+    public interface IAllocationHanlder
     {
-        void OnBeforeAllocation();
-        void OnBeforeRecycle();
+        void OnAllocation(PoolBase pool);
     }
 
-    public interface IPoolObjectHandler
+    public interface IRecycleHandler
     {
-        void OnAllocation();
-        void OnRecycle();
+        void OnRecycle(PoolBase pool);
     }
 
-    public interface IPoolObjectAfterHandler
+    public interface IBeforeAllocationHandler
     {
-        void OnAfterAllocation();
-        void OnAfterRecycle();
+        void OnBeforeAllocation(PoolBase pool);
+    }
+
+    public interface IBeforeRecycleHandler
+    {
+        void OnBeforeRecycle(PoolBase pool);
+    }
+
+    public interface IAfterAllocationHandler
+    {
+        void OnAfterAllocation(PoolBase pool);
+    }
+
+    public interface IAfterRecycleHandler
+    {
+        void OnAfterRecycle(PoolBase pool);
     }
 }
