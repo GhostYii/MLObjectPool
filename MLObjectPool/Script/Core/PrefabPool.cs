@@ -33,22 +33,22 @@ namespace MLObjectPool
         {
             GameObject go = GetGameObject();
 
-            IPoolObjectBeforeHandler beforeHandler = null;
-            if (go.TryGetComponent<IPoolObjectBeforeHandler>(out beforeHandler))
-                beforeHandler.OnBeforeAllocation();
+            IBeforeAllocationHandler beforeHandler = null;
+            if (go.TryGetComponent<IBeforeAllocationHandler>(out beforeHandler))
+                beforeHandler.OnBeforeAllocation(this);
 
             if (infoMap.ContainsKey(go))
                 infoMap[go].Allocation();
 
-            IPoolObjectHandler handler = null;
-            if (go.TryGetComponent<IPoolObjectHandler>(out handler))
-                handler.OnAllocation();
+            IAllocationHanlder handler = null;
+            if (go.TryGetComponent<IAllocationHanlder>(out handler))
+                handler.OnAllocation(this);
             else
                 OnGameObjectSpawn(go);
 
-            IPoolObjectAfterHandler afterHandler = null;
-            if (go.TryGetComponent<IPoolObjectAfterHandler>(out afterHandler))
-                afterHandler.OnAfterAllocation();
+            IAfterAllocationHandler afterHandler = null;
+            if (go.TryGetComponent<IAfterAllocationHandler>(out afterHandler))
+                afterHandler.OnAfterAllocation(this);
 
             spawnedObjects.Add(go);
             return go;
@@ -81,23 +81,23 @@ namespace MLObjectPool
             {
                 if (spawnedObjects.Contains(obj))
                 {
-                    IPoolObjectBeforeHandler beforeHandler = null;
-                    if (obj.TryGetComponent<IPoolObjectBeforeHandler>(out beforeHandler))
-                        beforeHandler.OnBeforeRecycle();
+                    IBeforeRecycleHandler beforeHandler = null;
+                    if (obj.TryGetComponent<IBeforeRecycleHandler>(out beforeHandler))
+                        beforeHandler.OnBeforeRecycle(this);
 
                     if (infoMap.ContainsKey(obj))
                         infoMap[obj].Recycle();
                     spawnedObjects.Remove(obj);
 
-                    IPoolObjectHandler handler = null;
-                    if (obj.TryGetComponent<IPoolObjectHandler>(out handler))
-                        handler.OnRecycle();
+                    IRecycleHandler handler = null;
+                    if (obj.TryGetComponent<IRecycleHandler>(out handler))
+                        handler.OnRecycle(this);
                     else
                         OnGameObjectDespawn(obj);
 
-                    IPoolObjectAfterHandler afterHandler = null;
-                    if (obj.TryGetComponent<IPoolObjectAfterHandler>(out afterHandler))
-                        afterHandler.OnAfterRecycle();
+                    IAfterRecycleHandler afterHandler = null;
+                    if (obj.TryGetComponent<IAfterRecycleHandler>(out afterHandler))
+                        afterHandler.OnAfterRecycle(this);
 
                     return true;
                 }
@@ -120,6 +120,25 @@ namespace MLObjectPool
                 return false;
 
             return Recycle((GameObject)obj);
+        }
+
+        public bool Recycle(GameObject[] objs)
+        {
+            bool ack = true;
+            foreach (var obj in objs)
+                ack = ack && Recycle(obj);
+            
+            return ack;
+        }
+
+        public bool RecycleAll()
+        {
+            bool ack = true;
+            List<GameObject> tmpLst = new List<GameObject>(spawnedObjects);
+            foreach (var obj in tmpLst)
+                ack = Recycle(obj) && ack;
+  
+            return ack;
         }
 
         private GameObject GetGameObject()

@@ -2,13 +2,14 @@
 {
     public abstract class PoolBase
     {
-        protected bool autoExpand = true;
         protected int size = 0;
+        protected bool autoExpand = false;
 
         /// <summary>
-        /// 自动拓展对象池容量
+        /// 是否自动拓展对象池
         /// </summary>
         public bool AutoExpand { get => autoExpand; set => autoExpand = value; }
+
         /// <summary>
         /// 对象池当前容量
         /// </summary>
