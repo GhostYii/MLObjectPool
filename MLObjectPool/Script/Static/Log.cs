@@ -2,6 +2,11 @@
 {
     internal static class Log
     {
+        public static bool LogEnable
+        {
+            get => UnityEngine.Debug.unityLogger.logEnabled;
+            set => UnityEngine.Debug.unityLogger.logEnabled = value;
+        }
         public static void Print(string msg)
         {
             UnityEngine.Debug.LogFormat("{0}: {1}", Constance.DEBUG_NAME, msg);
