@@ -21,17 +21,13 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release</OutputPath>
+    <OutputPath>..\..\..\Unity Projects\Developing\MLTools\Assets\Plugins\</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="UnityEditor">
-      <HintPath>C:\Program Files\Unity\Hub\Editor\2019.4.9f1\Editor\Data\Managed\UnityEditor.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
     <Reference Include="UnityEngine">
       <HintPath>C:\Program Files\Unity\Hub\Editor\2019.4.9f1\Editor\Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
@@ -51,8 +47,6 @@
     <Compile Include="Script\Classes\PoolObjectInfo.cs" />
     <Compile Include="Script\Core\PrefabPool.cs" />
     <Compile Include="Script\Core\PoolEventTrigger.cs" />
-    <Compile Include="Editor\ObjectPoolEditor.cs" />
-    <Compile Include="Editor\PoolEventTriggerEditor.cs" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

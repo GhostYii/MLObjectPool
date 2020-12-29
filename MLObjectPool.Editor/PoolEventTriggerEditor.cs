@@ -1,12 +1,11 @@
-﻿namespace MLObjectPool.Editor
-{
-    using MLObjectPool;
-    using System;
-    using UnityEditor;
-    using UnityEngine;
+﻿using System;
+using UnityEditor;
+using UnityEngine;
 
+namespace MLObjectPool.Editor
+{
     [CustomEditor(typeof(PoolEventTrigger))]
-    public class PoolEventTriggerEditor : Editor
+    public class PoolEventTriggerEditor : UnityEditor.Editor
     {
         SerializedProperty m_DelegatesProperty;
 
@@ -46,7 +45,7 @@
                 SerializedProperty delegateProperty = m_DelegatesProperty.GetArrayElementAtIndex(i);
                 SerializedProperty eventProperty = delegateProperty.FindPropertyRelative("eventID");
                 SerializedProperty callbacksProperty = delegateProperty.FindPropertyRelative("callback");
-                m_EventIDName.text =$"On {eventProperty.enumDisplayNames[eventProperty.enumValueIndex]}";
+                m_EventIDName.text = $"On {eventProperty.enumDisplayNames[eventProperty.enumValueIndex]}";
 
                 EditorGUILayout.PropertyField(callbacksProperty, m_EventIDName);
                 Rect callbackRect = GUILayoutUtility.GetLastRect();
