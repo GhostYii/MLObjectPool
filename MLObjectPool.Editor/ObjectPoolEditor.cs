@@ -1,10 +1,9 @@
-﻿namespace MLObjectPool.Editor
-{
-    using MLObjectPool;
-    using UnityEditor;
+﻿using UnityEditor;
 
+namespace MLObjectPool.Editor
+{
     [CustomEditor(typeof(ObjectPoolManager))]
-    public class ObjectPoolEditor : Editor
+    public class ObjectPoolEditor : UnityEditor.Editor
     {
         private bool foldout = true;
         private ObjectPoolManager script = null;

@@ -1,4 +1,4 @@
-﻿namespace MLObjectPool
+﻿namespace MLObjectPool.Editor
 {
     internal static class Log
     {
