@@ -13,7 +13,7 @@ namespace MLObjectPool
         private List<GameObject> spawnedObjects = new List<GameObject>();
         private Dictionary<GameObject, PoolObjectInfo> infoMap = new Dictionary<GameObject, PoolObjectInfo>();
 
-        public PrefabPool(GameObject go, int size = 10, bool isExpand = true)
+        internal PrefabPool(GameObject go, int size = 10, bool isExpand = true)
         {
             autoExpand = isExpand;
 

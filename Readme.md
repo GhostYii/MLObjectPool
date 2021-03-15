@@ -5,17 +5,17 @@ MLObjectPool is a dll project for Unity game engine authored by Ghostyii.
 You can get answer in this link: https://docs.unity3d.com/Manual/UsingDLL.html
 
 ## How to use MLObjectPool ?
-You can use the singeton script 'ObjectPool' to create default pool or prefab pool.
+You can use the singeton script 'ObjectPoolManager' to create default pool or prefab pool.
 ```csharp
-ObjectPool.Instance.CreatePrefabPool(string name, GameObject go, int size, bool autoExpand);
-ObjectPool.Instance.CreatePool<T>(string name, int size, bool autoExpand);
+ObjectPoolManager.Instance.CreatePrefabPool(string name, GameObject go, int size, bool autoExpand);
+ObjectPoolManager.Instance.CreatePool<T>(string name, int size, bool autoExpand);
 ```
 The params 'autoExpand' means while the pool is fill, system will auto create more object (raw pool's size) for next allocation. **This means that the object pool will automatically expand to twice the size of the current object pool every time it fills up.**
 
 General allocation and recycle method:
 ```csharp
-ObjectPool.Instance.AllocationFromPool(string name);
-ObjectPool.Instance.RecycleFromPool<T>(string name, T obj);
+ObjectPoolManager.Instance.AllocationFromPool(string name);
+ObjectPoolManager.Instance.RecycleFromPool<T>(string name, T obj);
 ```
 
 ## Pool\<T>
@@ -25,7 +25,7 @@ Pool\<T> is the general pool in MLObjectPool.
 //create by pool manager
 var goPool = ObjectPoolManager.Instance.CreatePool<GameObject>("gameObject", 100, true);
 
-//create by constructor
+//create by constructor (before v1.0.5)
 var goPool = new Pool<GameObject>(100, true);
 ObjectPoolManager.Instance.AddPool("gameObject", goPool);
 ```
@@ -50,7 +50,7 @@ public bool Recycle(T[] objs);
 //create by pool manager
 var prefabPool = ObjectPoolManager.Instance.CreatePrefabPool("prefab", prefab, 100, true);
 
-//create by constructor
+//create by constructor (before v1.0.5)
 var prefabPool = new PrefabPool(prefab, 100, true);
 ObjectPoolManager.Instance.AddPool("prefab", prefabPool);
 ```

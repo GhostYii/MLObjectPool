@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MLObjectPool
 {
@@ -8,7 +9,7 @@ namespace MLObjectPool
         private List<T> spawnedObjects = new List<T>();
         private Dictionary<T, PoolObjectInfo> infoMap = new Dictionary<T, PoolObjectInfo>();
 
-        public Pool(int defaultSize, bool autoExpand = false)
+        internal Pool(int defaultSize, bool autoExpand = false)
         {
             if (defaultSize < 0)
             {
