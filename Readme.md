@@ -74,7 +74,7 @@ Yes.
 You can create your pool by inherit class '**PoolBase**'.
 
 ## Interfaces
-MLObjectPool support the '**IAllocationHandler**','**IRecycleHandler**','**IBeforeAllocationHandler**','**IBeforeAllocationHandler**','**IAfterAllocationHandler**','**IAfterRecycleHandler**'.  
+MLObjectPool support the '**IAllocationHandler**','**IRecycleHandler**','**IBeforeAllocationHandler**','**IBeforeRecycleHandler**','**IAfterAllocationHandler**','**IAfterRecycleHandler**'.  
 - IAllocationHandler  
 This interface's method will be called on object pool allocation.
 - IRecycleHandler  
