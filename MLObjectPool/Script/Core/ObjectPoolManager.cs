@@ -54,7 +54,7 @@ namespace MLObjectPool
                 return null;
             }
 
-            Pool<T> pool = new Pool<T>(size);
+            Pool<T> pool = new Pool<T>(size, autoExpand);
             pools.Add(pool);
             poolMap.Add(name, pool);
 
