@@ -24,8 +24,7 @@ namespace MLObjectPool
 
             for (int i = 0; i < size; i++)
             {
-                GameObject tmp = GameObject.Instantiate<GameObject>(go);
-                AddGameObject(tmp);
+                AddGameObject(CreatePrefab());
             }
         }
 
@@ -153,16 +152,28 @@ namespace MLObjectPool
                 int createSize = size;
                 for (int i = 0; i < createSize; i++)
                 {
-                    var obj = GameObject.Instantiate(prefab);
-                    AddGameObject(obj);
+                    AddGameObject(CreatePrefab());
                 }
                 return objects[tmpSize];
             }
             else
             {
                 Log.PrintWarning($"{prefab} pool is too small.");
-                return GameObject.Instantiate(prefab);
+                return GameObject.Instantiate(CreatePrefab());
             }
+        }        
+
+        private GameObject CreatePrefab()
+        {
+            if (!prefab)
+            {
+                Log.PrintError($"{prefab} is null. Pool will return new GameObject.");
+                return new GameObject();
+            }
+
+            var obj = GameObject.Instantiate(prefab);
+            obj.AddComponent<PrefabPoolObject>().Pool = this;
+            return obj;
         }
 
         private void AddGameObject(GameObject obj)

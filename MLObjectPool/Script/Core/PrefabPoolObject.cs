@@ -5,7 +5,12 @@ namespace MLObjectPool
     [DisallowMultipleComponent]
     public class PrefabPoolObject : MonoBehaviour
     {
-        public bool autoExpand = false;
-        public int size = 10;
+        private PrefabPool pool = null;
+
+        public PrefabPool Pool
+        {
+            get => pool;
+            internal set => pool = value;
+        }
     }
 }
