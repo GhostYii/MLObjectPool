@@ -40,12 +40,12 @@ namespace MLObjectPool
             {
                 if (script.eventMap.ContainsKey(EventTriggerType.BeforeAllocation))
                     script.eventMap[EventTriggerType.BeforeAllocation].Invoke(this);
-
-                if (infoMap.ContainsKey(go))
-                    infoMap[go].Allocation();
                 else if (go.TryGetComponent<IBeforeAllocationHandler>(out beforeHandler))
                     beforeHandler.OnBeforeAllocation(this);
 
+                if (infoMap.ContainsKey(go))
+                    infoMap[go].Allocation();
+                
                 if (script.eventMap.ContainsKey(EventTriggerType.Allocation))
                     script.eventMap[EventTriggerType.Allocation].Invoke(this);
                 else if (go.TryGetComponent<IAllocationHanlder>(out handler))
