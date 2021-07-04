@@ -32,7 +32,7 @@ namespace MLObjectPool
             GameObject go = GetGameObject();
             PrefabPoolObject script = null;
 
-            if (script.TryGetComponent<PrefabPoolObject>(out script))
+            if (go.TryGetComponent<PrefabPoolObject>(out script))
             {
                 if (script.eventMap.ContainsKey(EventTriggerType.BeforeAllocation))
                     script.eventMap[EventTriggerType.BeforeAllocation].Invoke(this);
@@ -69,7 +69,9 @@ namespace MLObjectPool
             }
 
             spawnedObjects.Add(go);
+
             return go;
+
         }
 
         public GameObject[] Allocation(int size)
