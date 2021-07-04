@@ -8,3 +8,8 @@ E:\Visual Studio 2019 Projects\MLObjectPool\MLObjectPool.Editor\obj\Release\MLOb
 E:\Visual Studio 2019 Projects\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.csproj.CoreCompileInputs.cache
 E:\Visual Studio 2019 Projects\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.dll
 E:\Visual Studio 2019 Projects\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.pdb
+E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.csprojAssemblyReference.cache
+E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.csproj.CoreCompileInputs.cache
+E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.csproj.CopyComplete
+E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.dll
+E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Release\MLObjectPool.Editor.pdb

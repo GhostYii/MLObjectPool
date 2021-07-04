@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Events;
 using UnityEngine.Serialization;
 
 namespace MLObjectPool
@@ -14,15 +13,13 @@ namespace MLObjectPool
         IBeforeRecycleHandler,
         IRecycleHandler,
         IAfterRecycleHandler
-    {
-        [Serializable]
-        public class TriggerEvent : UnityEvent<PoolBase> { }
+    {        
 
         [Serializable]
         public class Entry
         {
             public EventTriggerType eventID = EventTriggerType.Allocation;
-            public TriggerEvent callback = new TriggerEvent();
+            public ObjectPoolEvent callback = new ObjectPoolEvent();
         }
 
         [FormerlySerializedAs("delegates")]
@@ -49,7 +46,6 @@ namespace MLObjectPool
                     ent.callback.Invoke(data);
             }
         }
-
 
         public void OnAfterAllocation(PoolBase pool)
         {
