@@ -1,4 +1,7 @@
-﻿namespace MLObjectPool
+﻿using System;
+using UnityEngine.Events;
+
+namespace MLObjectPool
 {
     public enum EventTriggerType
     {
@@ -9,5 +12,8 @@
         AfterAllocation,
         AfterRecycle
     }
+
+    [Serializable]
+    public class ObjectPoolEvent : UnityEvent<PoolBase> { }
 
 }
