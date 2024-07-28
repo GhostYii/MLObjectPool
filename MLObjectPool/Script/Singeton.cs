@@ -1,25 +1,21 @@
 ﻿using UnityEngine;
-using JetBrains.Annotations;
 
 namespace MLObjectPool
 {
     public abstract class Singleton<T> : MonoBehaviour where T : MonoBehaviour
     {
-        #region  Fields
-        [CanBeNull]
+        #region  Fields        
         private static T _instance;
 
         public static bool Quitting { get; private set; }
-
-        [NotNull]
+        
         // ReSharper disable once StaticMemberInGenericType
         private static readonly object Lock = new object();
 
         public bool _persistent = false;
         #endregion
 
-        #region  Properties
-        [NotNull]
+        #region  Properties        
         public static T Instance
         {
             get
@@ -62,7 +58,7 @@ namespace MLObjectPool
             OnAwake();
         }
 
-        protected virtual void OnAwake() { }
+        protected virtual void OnAwake() { Quitting = false; }
 
         private void OnApplicationQuit()
         {
