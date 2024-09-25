@@ -200,18 +200,22 @@ namespace MLObjectPool
         private GameObject GetGameObject()
         {
             foreach (var obj in infoMap)
+            {
                 if (obj.Value.isAvalible)
                     return obj.Key;
+            }
 
             if (autoExpand)
             {
                 int tmpSize = size + 1;
                 int createSize = size;
+                GameObject lastOne = null;
                 for (int i = 0; i < createSize; i++)
                 {
-                    AddGameObject(CreatePrefab());
+                    lastOne = CreatePrefab();
+                    AddGameObject(lastOne);
                 }
-                return objects[tmpSize];
+                return lastOne;
             }
             else
             {
