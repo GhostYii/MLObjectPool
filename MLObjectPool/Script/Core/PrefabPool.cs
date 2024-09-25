@@ -206,16 +206,13 @@ namespace MLObjectPool
             }
 
             if (autoExpand)
-            {
-                int tmpSize = size + 1;
-                int createSize = size;
-                GameObject lastOne = null;
+            {                
+                int createSize = Math.Max(size, 1);                
                 for (int i = 0; i < createSize; i++)
-                {
-                    lastOne = CreatePrefab();
-                    AddGameObject(lastOne);
+                {                    
+                    AddGameObject(CreatePrefab());
                 }
-                return lastOne;
+                return objects[size - 1];
             }
             else
             {
