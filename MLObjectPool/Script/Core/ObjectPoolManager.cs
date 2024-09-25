@@ -124,5 +124,11 @@ namespace MLObjectPool
 
             return poolMap[name].Recycle(obj, typeof(T));
         }
+
+        private void OnDestroy()
+        {
+            // do some clean
+            PrefabPool.poolRoot = null;
+        }
     }
 }

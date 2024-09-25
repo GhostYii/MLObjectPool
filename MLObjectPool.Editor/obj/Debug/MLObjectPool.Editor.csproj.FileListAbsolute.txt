@@ -1,2 +1,0 @@
-E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Debug\MLObjectPool.Editor.csprojAssemblyReference.cache
-E:\Github Repositories\MLObjectPool\MLObjectPool.Editor\obj\Debug\MLObjectPool.Editor.csproj.CoreCompileInputs.cache
