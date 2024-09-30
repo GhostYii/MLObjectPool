@@ -187,7 +187,7 @@ namespace MLObjectPool
             return ack;
         }
 
-        public bool RecycleAll()
+        public override bool RecycleAll()
         {
             bool ack = true;
             List<GameObject> tmpLst = new List<GameObject>(spawnedObjects);

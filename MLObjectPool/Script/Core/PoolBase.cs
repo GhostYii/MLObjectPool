@@ -17,6 +17,7 @@
 
         public abstract object Allocation(bool isExpand);
         public abstract bool Recycle(object obj, System.Type type);
+        public abstract bool RecycleAll();
         public abstract int GetSpawnedObjectCount();
     }
 }
