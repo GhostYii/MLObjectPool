@@ -152,7 +152,7 @@ namespace MLObjectPool
             return allRecylced;
         }
 
-        public bool RecycleAll()
+        public override bool RecycleAll()
         {
             bool ack = true;
             List<T> tmpLst = new List<T>(spawnedObjects);
