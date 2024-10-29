@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace MLObjectPool
 {
-    [DisallowMultipleComponent]
+    [DisallowMultipleComponent, ExecuteInEditMode]
     public sealed class ObjectPoolManager : Singleton<ObjectPoolManager>
     {
         private List<PoolBase> pools = new List<PoolBase>();
