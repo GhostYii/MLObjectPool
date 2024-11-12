@@ -87,7 +87,7 @@ namespace MLObjectPool
 
             pool.RecycleAll();
             pools.RemoveAll(p => p == pool);
-            foreach (var kv in poolMap.Where(kv => kv.Value == pool))
+            foreach (var kv in poolMap.Where(kv => kv.Value == pool).ToList())
             {
                 poolMap.Remove(kv.Key);
             }            
