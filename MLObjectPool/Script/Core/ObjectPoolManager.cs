@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace MLObjectPool
 {
-    [DisallowMultipleComponent]
+    [DisallowMultipleComponent, ExecuteInEditMode]
     public sealed class ObjectPoolManager : Singleton<ObjectPoolManager>
     {
         private List<PoolBase> pools = new List<PoolBase>();
@@ -29,7 +30,7 @@ namespace MLObjectPool
         {
             if (poolMap.ContainsKey(name))
             {
-                Log.PrintError($"{name} has already exist. please type other name for ObjectPool");
+                Log.PrintError($"pool {name} already exist.");
                 return null;
             }
 
@@ -50,7 +51,7 @@ namespace MLObjectPool
         {
             if (poolMap.ContainsKey(name))
             {
-                Log.PrintError($"{name} has already exist. please type other name for ObjectPool");
+                Log.PrintError($"pool {name} already exist.");
                 return null;
             }
 
@@ -62,6 +63,37 @@ namespace MLObjectPool
         }
 
         /// <summary>
+        /// 移除一个对象池
+        /// </summary>
+        /// <param name="name">对象池名称</param>
+        public void RemovePool(string name)
+        {
+            if (!poolMap.ContainsKey(name))
+                return;
+
+            poolMap[name].RecycleAll();
+            pools.RemoveAll(p => p == poolMap[name]);
+            poolMap.Remove(name);
+        }
+
+        /// <summary>
+        /// 移除对象池，该对象池将从管理器中全部移除
+        /// </summary>
+        /// <param name="pool">对象池对象</param>
+        public void RemovePool(PoolBase pool)
+        {
+            if (!poolMap.ContainsValue(pool))
+                return;
+
+            pool.RecycleAll();
+            pools.RemoveAll(p => p == pool);
+            foreach (var kv in poolMap.Where(kv => kv.Value == pool).ToList())
+            {
+                poolMap.Remove(kv.Key);
+            }            
+        }
+
+        /// <summary>
         /// 通过名称查找对象池
         /// </summary>
         /// <param name="name">对象池名称（不可重复）</param>
@@ -69,7 +101,7 @@ namespace MLObjectPool
         {
             if (!poolMap.ContainsKey(name))
             {
-                Log.Print($"{name} pool does not exists.");
+                Log.Print($"pool {name} does not exists.");
                 return null;
             }
 
@@ -85,7 +117,7 @@ namespace MLObjectPool
         {
             if (poolMap.ContainsKey(name))
             {
-                Log.PrintError($"{name} has already exist. please type other name for ObjectPool");
+                Log.PrintError($"pool {name} already exist.");
                 return;
             }
 
@@ -101,7 +133,7 @@ namespace MLObjectPool
         {
             if (!poolMap.ContainsKey(name))
             {
-                Log.PrintWarning($"{name} pool does not exists.");
+                Log.PrintWarning($"pool {name} does not exists.");
                 return null;
             }
 
@@ -118,7 +150,7 @@ namespace MLObjectPool
         {
             if (!poolMap.ContainsKey(name))
             {
-                Log.PrintWarning($"{name} pool does not exists.");
+                Log.PrintWarning($"pool {name} does not exists.");
                 return false;
             }
 
@@ -128,6 +160,12 @@ namespace MLObjectPool
         private void OnDestroy()
         {
             // do some clean
+            foreach (var pool in pools)
+            {
+                pool.RecycleAll();
+            }
+            pools.Clear();
+            poolMap.Clear();
             PrefabPool.poolRoot = null;
         }
     }

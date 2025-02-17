@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 
 namespace MLObjectPool
 {
@@ -12,13 +13,12 @@ namespace MLObjectPool
         private List<GameObject> spawnedObjects = new List<GameObject>();
         private Dictionary<GameObject, PoolObjectInfo> infoMap = new Dictionary<GameObject, PoolObjectInfo>();
 
-        internal static Transform poolRoot = null;
+        internal static PrefabPoolRoot poolRoot = null;
 
         internal PrefabPool(GameObject go, int size = 10, bool isExpand = true)
         {
             autoExpand = isExpand;
-
-            poolRoot = poolRoot ?? new GameObject("Prefab Pool").transform;
+            poolRoot = poolRoot ?? new GameObject("Prefab Pool").AddComponent<PrefabPoolRoot>();
             prefab = go;
 
             for (int i = 0; i < size; i++)
@@ -29,56 +29,16 @@ namespace MLObjectPool
 
         public GameObject Allocation()
         {
-            GameObject go = GetGameObject();
-            PrefabPoolObject script = null;
+            return HandleGameObjectAllocation(GetGameObject());
+        }
 
-            IBeforeAllocationHandler beforeHandler = null;
-            IAllocationHanlder handler = null;
-            IAfterAllocationHandler afterHandler = null;
-
-            if (go.TryGetComponent<PrefabPoolObject>(out script))
+        public void AllocationAsync(Action<GameObject> callback)
+        {
+            GetGameObjectAsync(go =>
             {
-                if (script.eventMap.ContainsKey(EventTriggerType.BeforeAllocation))
-                    script.eventMap[EventTriggerType.BeforeAllocation].Invoke(this);
-                else if (go.TryGetComponent<IBeforeAllocationHandler>(out beforeHandler))
-                    beforeHandler.OnBeforeAllocation(this);
-
-                if (infoMap.ContainsKey(go))
-                    infoMap[go].Allocation();
-                
-                if (script.eventMap.ContainsKey(EventTriggerType.Allocation))
-                    script.eventMap[EventTriggerType.Allocation].Invoke(this);
-                else if (go.TryGetComponent<IAllocationHanlder>(out handler))
-                    handler.OnAllocation(this);
-                else
-                    OnGameObjectSpawn(go);
-
-                if (script.eventMap.ContainsKey(EventTriggerType.AfterAllocation))
-                    script.eventMap[EventTriggerType.AfterAllocation].Invoke(this);
-                else if (go.TryGetComponent<IAfterAllocationHandler>(out afterHandler))
-                    afterHandler.OnAfterAllocation(this);
-            }
-            else
-            {
-                if (go.TryGetComponent<IBeforeAllocationHandler>(out beforeHandler))
-                    beforeHandler.OnBeforeAllocation(this);
-
-                if (infoMap.ContainsKey(go))
-                    infoMap[go].Allocation();
-
-                if (go.TryGetComponent<IAllocationHanlder>(out handler))
-                    handler.OnAllocation(this);
-                else
-                    OnGameObjectSpawn(go);
-
-                if (go.TryGetComponent<IAfterAllocationHandler>(out afterHandler))
-                    afterHandler.OnAfterAllocation(this);
-            }
-
-            spawnedObjects.Add(go);
-
-            return go;
-
+                HandleGameObjectAllocation(go);
+                callback?.Invoke(go);
+            });
         }
 
         public GameObject[] Allocation(int size)
@@ -89,11 +49,30 @@ namespace MLObjectPool
                 return null;
             }
 
-            List<GameObject> goLst = new List<GameObject>();
-            for (int i = 0; i < size; i++)
-                goLst.Add(Allocation());
+            GameObject[] goArray = new GameObject[size];
+            for (int i = 0; i < size; ++i)
+                goArray[i] = Allocation();
 
-            return goLst.ToArray();
+            return goArray;
+        }
+
+        public void AllocationAsync(int size, Action<GameObject[]> callback)
+        {
+            if (size < 0)
+            {
+                Log.PrintError($"{prefab} pool can not allocation {size} object.\npool size must be positive interger.");
+                return;
+            }
+
+            GetGameObjectAsync(size, gos =>
+            {
+                foreach (var go in gos)
+                {
+                    HandleGameObjectAllocation(go);
+                }
+
+                callback?.Invoke(gos);
+            });
         }
 
         public override object Allocation(bool isExpand)
@@ -104,20 +83,18 @@ namespace MLObjectPool
 
         public bool Recycle(GameObject obj)
         {
+            if (!obj)
+                return false;
+
             if (objects.Contains(obj))
             {
                 if (spawnedObjects.Contains(obj))
                 {
-                    PrefabPoolObject script = null;
-                    IBeforeRecycleHandler beforeHandler = null;
-                    IRecycleHandler handler = null;
-                    IAfterRecycleHandler afterHandler = null;
-
-                    if (obj.TryGetComponent<PrefabPoolObject>(out script))
+                    if (obj.TryGetComponent<PrefabPoolObject>(out var script))
                     {
                         if (script.eventMap.ContainsKey(EventTriggerType.BeforeRecycle))
                             script.eventMap[EventTriggerType.BeforeRecycle].Invoke(this);
-                        else if (obj.TryGetComponent<IBeforeRecycleHandler>(out beforeHandler))
+                        else if (obj.TryGetComponent<IBeforeRecycleHandler>(out var beforeHandler))
                             beforeHandler.OnBeforeRecycle(this);
 
                         if (infoMap.ContainsKey(obj))
@@ -126,31 +103,31 @@ namespace MLObjectPool
 
                         if (script.eventMap.ContainsKey(EventTriggerType.Recycle))
                             script.eventMap[EventTriggerType.Recycle].Invoke(this);
-                        else if (obj.TryGetComponent<IRecycleHandler>(out handler))
+                        else if (obj.TryGetComponent<IRecycleHandler>(out var handler))
                             handler.OnRecycle(this);
                         else
                             OnGameObjectDespawn(obj);
 
                         if (script.eventMap.ContainsKey(EventTriggerType.AfterRecycle))
                             script.eventMap[EventTriggerType.AfterRecycle].Invoke(this);
-                        else if (obj.TryGetComponent<IAfterRecycleHandler>(out afterHandler))
+                        else if (obj.TryGetComponent<IAfterRecycleHandler>(out var afterHandler))
                             afterHandler.OnAfterRecycle(this);
                     }
                     else
                     {
-                        if (obj.TryGetComponent<IBeforeRecycleHandler>(out beforeHandler))
+                        if (obj.TryGetComponent<IBeforeRecycleHandler>(out var beforeHandler))
                             beforeHandler.OnBeforeRecycle(this);
 
                         if (infoMap.ContainsKey(obj))
                             infoMap[obj].Recycle();
                         spawnedObjects.Remove(obj);
 
-                        if (obj.TryGetComponent<IRecycleHandler>(out handler))
+                        if (obj.TryGetComponent<IRecycleHandler>(out var handler))
                             handler.OnRecycle(this);
                         else
                             OnGameObjectDespawn(obj);
 
-                        if (obj.TryGetComponent<IAfterRecycleHandler>(out afterHandler))
+                        if (obj.TryGetComponent<IAfterRecycleHandler>(out var afterHandler))
                             afterHandler.OnAfterRecycle(this);
                     }
 
@@ -187,7 +164,7 @@ namespace MLObjectPool
             return ack;
         }
 
-        public bool RecycleAll()
+        public override bool RecycleAll()
         {
             bool ack = true;
             List<GameObject> tmpLst = new List<GameObject>(spawnedObjects);
@@ -207,21 +184,82 @@ namespace MLObjectPool
 
             if (autoExpand)
             {
-                int tmpSize = size + 1;
-                int createSize = size;
-                GameObject lastOne = null;
+                int createSize = Math.Max(size, 1);
                 for (int i = 0; i < createSize; i++)
                 {
-                    lastOne = CreatePrefab();
-                    AddGameObject(lastOne);
+                    AddGameObject(CreatePrefab());
                 }
-                return lastOne;
+                return objects[size - 1];
             }
             else
             {
                 Log.PrintWarning($"{prefab} pool is too small.");
                 return GameObject.Instantiate(CreatePrefab());
             }
+        }
+
+        private void GetGameObjectAsync(Action<GameObject> callback)
+        {
+            foreach (var obj in infoMap)
+            {
+                if (obj.Value.isAvalible)
+                {
+                    callback?.Invoke(obj.Key);
+                    return;
+                }
+            }
+
+            if (autoExpand)
+            {
+                poolRoot.StartCoroutine(CreatePrefabAsync(Math.Max(size, 1), gos =>
+                {
+                    foreach (var go in gos)
+                    {
+                        AddGameObject(go);
+                    }
+
+                    callback?.Invoke(objects[size - 1]);
+                }));
+            }
+            else
+            {
+                Log.PrintWarning($"{prefab} pool is too small.");
+                poolRoot.StartCoroutine(CreatePrefabAsync(1, gos => callback?.Invoke(gos[0])));
+            }
+        }
+
+        private void GetGameObjectAsync(int size, Action<GameObject[]> callback)
+        {
+            List<GameObject> objs = new List<GameObject>();
+            if (size == 0)
+            {
+                callback?.Invoke(objs.ToArray());
+                return;
+            }
+
+            foreach (var obj in infoMap)
+            {
+                if (obj.Value.isAvalible)
+                {
+                    objs.Add(obj.Key);
+                    if (objs.Count >= size)
+                    {
+                        callback?.Invoke(objs.ToArray());
+                        return;
+                    }
+                }
+            }
+
+            poolRoot.StartCoroutine(CreatePrefabAsync(size - objs.Count, gos =>
+            {
+                foreach (var go in gos)
+                {
+                    AddGameObject(go);
+                    objs.Add(go);
+                }
+
+                callback?.Invoke(objs.ToArray());
+            }));
         }
 
         private GameObject CreatePrefab()
@@ -235,6 +273,21 @@ namespace MLObjectPool
             var obj = GameObject.Instantiate(prefab);
             obj.AddComponent<PrefabPoolObject>().Pool = this;
             return obj;
+        }
+
+        private IEnumerator CreatePrefabAsync(int count, Action<GameObject[]> callback)
+        {
+            if (!prefab)
+            {
+                Log.PrintError($"{prefab} is null. Pool will return new GameObject.");
+                callback?.Invoke(new GameObject[] { new GameObject() });
+                yield return 0;
+            }
+
+            var asyncOp = GameObject.InstantiateAsync(prefab, count);
+            yield return asyncOp;
+
+            callback?.Invoke(asyncOp.Result);
         }
 
         private void AddGameObject(GameObject obj)
@@ -253,6 +306,51 @@ namespace MLObjectPool
             }
         }
 
+        private GameObject HandleGameObjectAllocation(GameObject go)
+        {
+            if (go.TryGetComponent<PrefabPoolObject>(out var script))
+            {
+                if (script.eventMap.ContainsKey(EventTriggerType.BeforeAllocation))
+                    script.eventMap[EventTriggerType.BeforeAllocation].Invoke(this);
+                else if (go.TryGetComponent<IBeforeAllocationHandler>(out var beforeHandler))
+                    beforeHandler.OnBeforeAllocation(this);
+
+                if (infoMap.ContainsKey(go))
+                    infoMap[go].Allocation();
+
+                if (script.eventMap.ContainsKey(EventTriggerType.Allocation))
+                    script.eventMap[EventTriggerType.Allocation].Invoke(this);
+                else if (go.TryGetComponent<IAllocationHanlder>(out var handler))
+                    handler.OnAllocation(this);
+                else
+                    OnGameObjectSpawn(go);
+
+                if (script.eventMap.ContainsKey(EventTriggerType.AfterAllocation))
+                    script.eventMap[EventTriggerType.AfterAllocation].Invoke(this);
+                else if (go.TryGetComponent<IAfterAllocationHandler>(out var afterHandler))
+                    afterHandler.OnAfterAllocation(this);
+            }
+            else
+            {
+                if (go.TryGetComponent<IBeforeAllocationHandler>(out var beforeHandler))
+                    beforeHandler.OnBeforeAllocation(this);
+
+                if (infoMap.ContainsKey(go))
+                    infoMap[go].Allocation();
+
+                if (go.TryGetComponent<IAllocationHanlder>(out var handler))
+                    handler.OnAllocation(this);
+                else
+                    OnGameObjectSpawn(go);
+
+                if (go.TryGetComponent<IAfterAllocationHandler>(out var afterHandler))
+                    afterHandler.OnAfterAllocation(this);
+            }
+
+            spawnedObjects.Add(go);
+            return go;
+        }
+
         private bool EnoughObject(int size)
         {
             if (autoExpand)
@@ -264,7 +362,7 @@ namespace MLObjectPool
         private void OnGameObjectAdded(GameObject obj)
         {
             obj.name = prefab.name;
-            obj.transform.SetParent(poolRoot);
+            obj.transform.SetParent(poolRoot.transform);
             obj.transform.position = Vector3.zero;
             obj.transform.rotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
@@ -279,7 +377,10 @@ namespace MLObjectPool
 
         private void OnGameObjectDespawn(GameObject obj)
         {
-            obj.transform.SetParent(poolRoot);
+            if (obj == null)
+                return;
+
+            obj.transform.SetParent(poolRoot.transform);
             obj.transform.position = Vector3.zero;
             obj.transform.rotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
