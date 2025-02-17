@@ -279,7 +279,10 @@ namespace MLObjectPool
 
         private void OnGameObjectDespawn(GameObject obj)
         {
-            obj.transform.SetParent(poolRoot);
+            if (obj == null)
+                return;
+
+            obj.transform.SetParent(poolRoot.transform);
             obj.transform.position = Vector3.zero;
             obj.transform.rotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
