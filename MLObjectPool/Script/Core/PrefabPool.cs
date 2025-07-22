@@ -362,7 +362,8 @@ namespace MLObjectPool
         private void OnGameObjectAdded(GameObject obj)
         {
             obj.name = prefab.name;
-            obj.transform.SetParent(poolRoot.transform);
+            if (poolRoot)
+                obj.transform.SetParent(poolRoot.transform);
             obj.transform.position = Vector3.zero;
             obj.transform.rotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
@@ -380,7 +381,9 @@ namespace MLObjectPool
             if (obj == null)
                 return;
 
-            obj.transform.SetParent(poolRoot.transform);
+            if (poolRoot)
+                obj.transform.SetParent(poolRoot.transform);
+
             obj.transform.position = Vector3.zero;
             obj.transform.rotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
