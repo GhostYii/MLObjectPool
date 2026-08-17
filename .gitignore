@@ -1,5 +1,9 @@
-﻿.vs
-MLObjectPool.Editor/obj
-*/bin
+.vs/
 *.csproj
-*/bin
+*.sln
+[Oo]bj/
+[Bb]in/
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Uu]serSettings/

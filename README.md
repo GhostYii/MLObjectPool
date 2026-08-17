@@ -1,15 +1,43 @@
 # MLObjectPool
 
-MLObjectPool is a DLL-based object pool plugin for the Unity game engine.
+MLObjectPool is a Unity Package Manager (UPM) object pool plugin for the Unity game engine.
 
 ## Requirements
 
 - Unity 2022.3.20 or newer (`GameObject.InstantiateAsync` is used by prefab pool async APIs)
-- .NET Framework 4.7.1 compatible C# project
 
-## How to add the Unity reference
+## Installation
 
-See Unity's official guide: https://docs.unity3d.com/Manual/UsingDLL.html
+The repository root is a UPM package (`com.ghostyii.mlobjectpool`).
+
+### Local package
+
+Copy or clone the repository into your `Packages` folder, or add a file reference
+in `Packages/manifest.json`:
+
+```json
+{
+  "dependencies": {
+    "com.ghostyii.mlobjectpool": "file:../MLObjectPool"
+  }
+}
+```
+
+### Git dependency
+
+Add the repository as a Git dependency in `Packages/manifest.json`:
+
+```json
+{
+  "dependencies": {
+    "com.ghostyii.mlobjectpool": "https://github.com/GhostYii/MLObjectPool.git#<branch-or-tag>"
+  }
+}
+```
+
+The package contains `Runtime` and `Editor` assemblies (`MLObjectPool.Runtime` /
+`MLObjectPool.Editor`). Runtime code is available in any assembly; the editor
+assembly is only compiled in the Unity Editor.
 
 ## Quick Start
 

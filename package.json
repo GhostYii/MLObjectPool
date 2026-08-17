@@ -1,0 +1,22 @@
+{
+  "name": "com.ghostyii.mlobjectpool",
+  "version": "2.0.0",
+  "displayName": "MLObjectPool",
+  "description": "A high-performance, reliable object pool plugin for Unity.",
+  "unity": "2022.3",
+  "unityRelease": "20f1",
+  "keywords": [
+    "object pool",
+    "pool",
+    "unity",
+    "performance"
+  ],
+  "author": {
+    "name": "Ghostyii",
+    "url": "https://github.com/GhostYii"
+  },
+  "type": "library",
+  "documentationUrl": "https://github.com/GhostYii/MLObjectPool",
+  "changelogUrl": "https://github.com/GhostYii/MLObjectPool/releases",
+  "licensesUrl": "https://github.com/GhostYii/MLObjectPool"
+}
