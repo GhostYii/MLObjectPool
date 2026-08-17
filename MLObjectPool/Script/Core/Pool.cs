@@ -1,200 +1,214 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace MLObjectPool
 {
     public sealed class Pool<T> : PoolBase where T : new()
     {
-        private List<T> objects = new List<T>();
-        private List<T> spawnedObjects = new List<T>();
-        private Dictionary<T, PoolObjectInfo> infoMap = new Dictionary<T, PoolObjectInfo>();
+        private readonly Stack<T> _available = new Stack<T>();
+        private readonly HashSet<T> _active = new HashSet<T>();
+        private readonly HashSet<T> _known = new HashSet<T>();
+        private readonly Func<T> _factory;
 
-        internal Pool(int defaultSize, bool autoExpand = false)
+        public Pool(int defaultSize, bool autoExpand = false) : this(defaultSize, autoExpand, null)
+        {
+        }
+
+        public Pool(int defaultSize, bool autoExpand, Func<T> factory)
         {
             if (defaultSize < 0)
-            {
-                Log.PrintError($"{typeof(T)} pool can not allocation {size} object.\npool size must be positive interger.");
-                return;
-            }
+                throw new ArgumentOutOfRangeException(nameof(defaultSize));
 
             size = defaultSize;
             this.autoExpand = autoExpand;
-            for (int i = 0; i < size; i++)
-                AddPoolObject(new T());
+            _factory = factory ?? (() => new T());
 
-            spawnedObjects = new List<T>();
+            for (int i = 0; i < size; i++)
+                AddPoolObject(_factory());
         }
+
+        public override int AvailableObjectCount => _available.Count;
+        public override int ActiveObjectCount => _active.Count;
 
         public void AddPoolObject(T obj)
         {
-            if (objects.Contains(obj))
+            if (ReferenceEquals(obj, null))
             {
-                Log.Print($"{obj.ToString()} already exist in {typeof(T)} pool.");
+                Log.PrintError($"{typeof(T)} pool can not add null object.");
                 return;
             }
-            else
+
+            if (!_known.Add(obj))
             {
-                objects.Add(obj);
-                infoMap.Add(obj, new PoolObjectInfo());
-                size++;
+                Log.Print($"{obj} already exists in {typeof(T)} pool.");
+                return;
             }
+
+            _available.Push(obj);
+            size = _known.Count;
         }
 
         public override object Allocation(bool isExpand)
         {
-            if (EnoughObject(1))
-                return Allocation();
-            else
-            {
-                T obj = new T();
+            if (isExpand && _available.Count == 0)
+                Expand(GetExpandCount());
 
-                if (obj is IBeforeAllocationHandler)
-                    (obj as IBeforeAllocationHandler).OnBeforeAllocation(this);
-
-                if (obj is IAllocationHanlder)
-                    (obj as IAllocationHanlder).OnAllocation(this);
-
-                if (obj is IAfterAllocationHandler)
-                    (obj as IAfterAllocationHandler).OnAfterAllocation(this);
-
-                return obj;
-            }
-        }
-
-        public override bool Recycle(object obj, System.Type type)
-        {
-            if (type.Equals(typeof(T)))
-            {
-                foreach (var o in objects)
-                    if (System.Object.ReferenceEquals(obj, o))
-                        return Recycle(o);
-                return false;
-            }
-            else
-                return false;
+            return Allocation();
         }
 
         public T Allocation()
         {
-            T obj = GetObject();
+            T obj;
+            return TryAllocation(out obj) ? obj : default(T);
+        }
 
-            if (obj is IBeforeAllocationHandler)
-                (obj as IBeforeAllocationHandler).OnBeforeAllocation(this);
+        public bool TryAllocation(out T obj)
+        {
+            if (_available.Count == 0)
+            {
+                if (autoExpand)
+                    Expand(GetExpandCount());
+                else
+                {
+                    Log.PrintWarning($"{typeof(T)} pool is too small.");
+                    obj = default(T);
+                    return false;
+                }
+            }
 
-            if (infoMap.ContainsKey(obj))
-                infoMap[obj].Allocation();
-            if (obj is IAllocationHanlder)
-                (obj as IAllocationHanlder).OnAllocation(this);
+            obj = PopAvailable();
+            _active.Add(obj);
 
-            if (obj is IAfterAllocationHandler)
-                (obj as IAfterAllocationHandler).OnAfterAllocation(this);
+            if (obj is IBeforeAllocationHandler before)
+                before.OnBeforeAllocation(this);
 
-            spawnedObjects.Add(obj);
+            if (obj is IAllocationHandler allocation)
+                allocation.OnAllocation(this);
 
-            return obj;
+            if (obj is IAfterAllocationHandler after)
+                after.OnAfterAllocation(this);
+
+            return true;
         }
 
         public T[] Allocation(int size)
         {
-            T[] objs = new T[size];
-            for (int i = 0; i < size; i++)
-                objs[i] = Allocation();
+            if (size < 0)
+                throw new ArgumentOutOfRangeException(nameof(size));
 
-            return objs;
+            if (!autoExpand && _available.Count < size)
+            {
+                Log.PrintWarning($"{typeof(T)} pool is too small.");
+                return null;
+            }
+
+            var result = new T[size];
+            for (int i = 0; i < size; i++)
+            {
+                if (!TryAllocation(out result[i]))
+                    return null;
+            }
+
+            return result;
+        }
+
+        public override bool Recycle(object obj, Type type)
+        {
+            if (type == null || !typeof(T).IsAssignableFrom(type))
+                return false;
+
+            return Recycle((T)obj);
         }
 
         public bool Recycle(T obj)
         {
-            if (objects.Contains(obj))
+            if (ReferenceEquals(obj, null))
             {
-                if (spawnedObjects.Contains(obj))
-                {
-                    if (obj is IBeforeRecycleHandler)
-                        (obj as IBeforeRecycleHandler).OnBeforeRecycle(this);
-
-                    if (infoMap.ContainsKey(obj))
-                        infoMap[obj].Recycle();
-                    if (obj is IRecycleHandler)
-                        (obj as IRecycleHandler).OnRecycle(this);
-
-                    spawnedObjects.Remove(obj);
-
-                    if (obj is IAfterRecycleHandler)
-                        (obj as IAfterRecycleHandler).OnAfterRecycle(this);
-
-                    return true;
-                }
-                else
-                {
-                    Log.PrintWarning($"{obj} is not exist in {typeof(T)} pool cache.");
-                    return false;
-                }
+                Log.PrintWarning($"{typeof(T)} pool can not recycle null object.");
+                return false;
             }
-            else
+
+            if (!_known.Contains(obj))
             {
                 Log.PrintWarning($"{obj} is not exist in {typeof(T)} pool.");
                 return false;
             }
-        }
 
-        /// <summary>
-        /// 批量回收对象
-        /// </summary>
-        /// <returns>所有对象是否回收成功</returns>
-        public bool Recycle(T[] objs)
-        {
-            bool allRecylced = true;
-            foreach (var obj in objs)
+            if (!_active.Contains(obj))
             {
-                allRecylced = allRecylced && Recycle(obj);
+                Log.PrintWarning($"{obj} is not exist in {typeof(T)} pool cache.");
+                return false;
             }
 
-            return allRecylced;
+            if (obj is IBeforeRecycleHandler before)
+                before.OnBeforeRecycle(this);
+
+            if (obj is IRecycleHandler recycle)
+                recycle.OnRecycle(this);
+
+            _active.Remove(obj);
+            _available.Push(obj);
+
+            if (obj is IAfterRecycleHandler after)
+                after.OnAfterRecycle(this);
+
+            return true;
+        }
+
+        public bool Recycle(T[] objs)
+        {
+            if (objs == null)
+                return false;
+
+            bool allRecycled = true;
+            foreach (var obj in objs)
+                allRecycled = Recycle(obj) && allRecycled;
+
+            return allRecycled;
         }
 
         public override bool RecycleAll()
         {
-            bool ack = true;
-            List<T> tmpLst = new List<T>(spawnedObjects);
-            foreach (var obj in tmpLst)
-                ack = Recycle(obj) && ack;
+            bool allRecycled = true;
+            var snapshot = new T[_active.Count];
+            _active.CopyTo(snapshot);
 
-            return ack;
+            foreach (var obj in snapshot)
+                allRecycled = Recycle(obj) && allRecycled;
+
+            return allRecycled;
         }
 
-        private T GetObject()
+        public override void Clear()
         {
-            foreach (var obj in infoMap)
-                if (obj.Value.isAvalible)
-                    return obj.Key;
+            RecycleAll();
+            _available.Clear();
+            _active.Clear();
+            _known.Clear();
+            size = 0;
+        }
 
-            if (autoExpand)
+        private void Expand(int count)
+        {
+            for (int i = 0; i < count; i++)
+                AddPoolObject(_factory());
+        }
+
+        private int GetExpandCount()
+        {
+            return Math.Max(size, 1);
+        }
+
+        private T PopAvailable()
+        {
+            while (_available.Count > 0)
             {
-                int tmpSize = size + 1;
-                for (int i = 0; i < size; i++)
-                    AddPoolObject(new T());
-
-                return objects[tmpSize];
+                var obj = _available.Pop();
+                if (!ReferenceEquals(obj, null))
+                    return obj;
             }
-            else
-            {
-                Log.PrintWarning($"{typeof(T)} pool is too small.");
-                return new T();
-            }
-        }
 
-        private bool EnoughObject(int size)
-        {
-            if (autoExpand)
-                return true;
-            else
-                return objects.Count - spawnedObjects.Count >= size;
-        }
-
-        public override int GetSpawnedObjectCount()
-        {
-            return size - spawnedObjects.Count;
+            return default(T);
         }
     }
 }
-

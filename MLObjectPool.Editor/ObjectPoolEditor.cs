@@ -16,7 +16,7 @@ namespace MLObjectPool.Editor
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            script._persistent = EditorGUILayout.Toggle("Dont Destory", script._persistent);
+            script.Persistent = EditorGUILayout.Toggle("Dont Destroy", script.Persistent);
 
             foldout = EditorGUILayout.BeginFoldoutHeaderGroup(foldout, "Pools");
             if (foldout)
@@ -29,8 +29,9 @@ namespace MLObjectPool.Editor
                         EditorGUILayout.LabelField($"[{item} Pool]: ");
                         EditorGUI.indentLevel++;
                         EditorGUILayout.LabelField($"Size:{ pool.Size}");
-                        EditorGUILayout.LabelField($"Allocation Count:{pool.Size - pool.GetSpawnedObjectCount()}");
-                        OnInsoectorInfoGUI(pool);
+                        EditorGUILayout.LabelField($"Available:{pool.GetAvailableObjectCount()}");
+                        EditorGUILayout.LabelField($"Active:{pool.GetSpawnedObjectCount()}");
+                        OnInspectorPoolInfoGUI(pool);
                         EditorGUI.indentLevel--;
                     }
                 }
@@ -38,10 +39,9 @@ namespace MLObjectPool.Editor
             EditorGUILayout.EndFoldoutHeaderGroup();
 
             serializedObject.ApplyModifiedProperties();
-            Repaint();
         }
 
-        protected virtual void OnInsoectorInfoGUI(PoolBase pool)
+        protected virtual void OnInspectorPoolInfoGUI(PoolBase pool)
         {
             EditorGUILayout.LabelField($"Auto Expand:{ pool.AutoExpand}");
         }

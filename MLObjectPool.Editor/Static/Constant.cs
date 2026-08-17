@@ -1,6 +1,6 @@
 ﻿namespace MLObjectPool.Editor
 {
-    internal class Constance
+    internal class Constant
     {
         public const string DEBUG_NAME = "[MLObjectPool]";
     }

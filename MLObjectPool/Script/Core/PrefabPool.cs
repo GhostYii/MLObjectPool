@@ -1,371 +1,422 @@
-﻿using System;
-using UnityEngine;
-using System.Collections.Generic;
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
 
 namespace MLObjectPool
 {
     [Serializable]
     public sealed class PrefabPool : PoolBase
     {
-        private GameObject prefab = null;
-        private List<GameObject> objects = new List<GameObject>();
-        private List<GameObject> spawnedObjects = new List<GameObject>();
-        private Dictionary<GameObject, PoolObjectInfo> infoMap = new Dictionary<GameObject, PoolObjectInfo>();
+        private readonly Stack<GameObject> _available = new Stack<GameObject>();
+        private readonly HashSet<GameObject> _active = new HashSet<GameObject>();
+        private readonly HashSet<GameObject> _known = new HashSet<GameObject>();
+        private readonly PrefabPoolRoot _root;
+        private GameObject _prefab;
 
-        internal static PrefabPoolRoot poolRoot = null;
-
-        internal PrefabPool(GameObject go, int size = 10, bool isExpand = true)
+        internal PrefabPool(GameObject go, PrefabPoolRoot root, int size = 10, bool isExpand = true)
         {
+            if (go == null)
+                throw new ArgumentNullException(nameof(go));
+            if (root == null)
+                throw new ArgumentNullException(nameof(root));
+            if (size < 0)
+                throw new ArgumentOutOfRangeException(nameof(size));
+
+            _prefab = go;
+            _root = root;
             autoExpand = isExpand;
-            poolRoot = poolRoot ?? new GameObject("Prefab Pool").AddComponent<PrefabPoolRoot>();
-            prefab = go;
 
             for (int i = 0; i < size; i++)
-            {
-                AddGameObject(CreatePrefab());
-            }
+                AddInstance(CreateInstance());
         }
+
+        public override int AvailableObjectCount => _available.Count;
+        public override int ActiveObjectCount => _active.Count;
 
         public GameObject Allocation()
         {
-            return HandleGameObjectAllocation(GetGameObject());
+            GameObject go;
+            return TryAllocation(out go) ? go : null;
         }
 
-        public void AllocationAsync(Action<GameObject> callback)
+        public bool TryAllocation(out GameObject go)
         {
-            GetGameObjectAsync(go =>
+            if (_available.Count == 0)
             {
-                HandleGameObjectAllocation(go);
-                callback?.Invoke(go);
-            });
+                if (autoExpand)
+                    Expand(GetExpandCount());
+                else
+                {
+                    Log.PrintWarning($"{_prefab.name} pool is too small.");
+                    go = null;
+                    return false;
+                }
+            }
+
+            go = PopAvailable();
+            return HandleAllocation(go) != null;
+        }
+
+        public override object Allocation(bool isExpand)
+        {
+            if (isExpand && _available.Count == 0)
+                Expand(GetExpandCount());
+
+            return Allocation();
         }
 
         public GameObject[] Allocation(int size)
         {
             if (size < 0)
+                throw new ArgumentOutOfRangeException(nameof(size));
+
+            if (!autoExpand && _available.Count < size)
             {
-                Log.PrintError($"{prefab} pool can not allocation {size} object.\npool size must be positive interger.");
+                Log.PrintWarning($"{_prefab.name} pool is too small.");
                 return null;
             }
 
-            GameObject[] goArray = new GameObject[size];
-            for (int i = 0; i < size; ++i)
-                goArray[i] = Allocation();
+            var result = new GameObject[size];
+            for (int i = 0; i < size; i++)
+            {
+                if (!TryAllocation(out result[i]))
+                    return null;
+            }
 
-            return goArray;
+            return result;
+        }
+
+        public void AllocationAsync(Action<GameObject> callback)
+        {
+            GameObject go;
+            if (TryPopAvailable(out go))
+            {
+                callback?.Invoke(HandleAllocation(go));
+                return;
+            }
+
+            if (!autoExpand)
+            {
+                Log.PrintWarning($"{_prefab.name} pool is too small.");
+                callback?.Invoke(null);
+                return;
+            }
+
+            StartCreateAsync(GetExpandCount(), gos =>
+            {
+                foreach (var obj in gos)
+                    AddInstance(obj);
+
+                callback?.Invoke(TryPopAvailable(out go) ? HandleAllocation(go) : null);
+            });
         }
 
         public void AllocationAsync(int size, Action<GameObject[]> callback)
         {
             if (size < 0)
             {
-                Log.PrintError($"{prefab} pool can not allocation {size} object.\npool size must be positive interger.");
+                Log.PrintError($"{_prefab.name} pool can not allocation {size} object.");
+                callback?.Invoke(null);
                 return;
             }
 
-            GetGameObjectAsync(size, gos =>
+            if (size == 0)
             {
-                foreach (var go in gos)
+                callback?.Invoke(new GameObject[0]);
+                return;
+            }
+
+            if (!autoExpand && _available.Count < size)
+            {
+                Log.PrintWarning($"{_prefab.name} pool is too small.");
+                callback?.Invoke(null);
+                return;
+            }
+
+            var result = new List<GameObject>(size);
+            while (result.Count < size && _available.Count > 0)
+                result.Add(PopAvailable());
+
+            if (result.Count == size)
+            {
+                InvokeBatchAllocation(result, callback);
+                return;
+            }
+
+            StartCreateAsync(size - result.Count, gos =>
+            {
+                foreach (var obj in gos)
+                    AddInstance(obj);
+
+                while (result.Count < size && _available.Count > 0)
+                    result.Add(PopAvailable());
+
+                if (result.Count < size)
                 {
-                    HandleGameObjectAllocation(go);
+                    Log.PrintWarning($"{_prefab.name} pool is too small.");
+                    callback?.Invoke(null);
+                    return;
                 }
 
-                callback?.Invoke(gos);
+                InvokeBatchAllocation(result, callback);
             });
-        }
-
-        public override object Allocation(bool isExpand)
-        {
-            autoExpand = isExpand;
-            return Allocation();
-        }
-
-        public bool Recycle(GameObject obj)
-        {
-            if (!obj)
-                return false;
-
-            if (objects.Contains(obj))
-            {
-                if (spawnedObjects.Contains(obj))
-                {
-                    if (obj.TryGetComponent<PrefabPoolObject>(out var script))
-                    {
-                        if (script.eventMap.ContainsKey(EventTriggerType.BeforeRecycle))
-                            script.eventMap[EventTriggerType.BeforeRecycle].Invoke(this);
-                        else if (obj.TryGetComponent<IBeforeRecycleHandler>(out var beforeHandler))
-                            beforeHandler.OnBeforeRecycle(this);
-
-                        if (infoMap.ContainsKey(obj))
-                            infoMap[obj].Recycle();
-                        spawnedObjects.Remove(obj);
-
-                        if (script.eventMap.ContainsKey(EventTriggerType.Recycle))
-                            script.eventMap[EventTriggerType.Recycle].Invoke(this);
-                        else if (obj.TryGetComponent<IRecycleHandler>(out var handler))
-                            handler.OnRecycle(this);
-                        else
-                            OnGameObjectDespawn(obj);
-
-                        if (script.eventMap.ContainsKey(EventTriggerType.AfterRecycle))
-                            script.eventMap[EventTriggerType.AfterRecycle].Invoke(this);
-                        else if (obj.TryGetComponent<IAfterRecycleHandler>(out var afterHandler))
-                            afterHandler.OnAfterRecycle(this);
-                    }
-                    else
-                    {
-                        if (obj.TryGetComponent<IBeforeRecycleHandler>(out var beforeHandler))
-                            beforeHandler.OnBeforeRecycle(this);
-
-                        if (infoMap.ContainsKey(obj))
-                            infoMap[obj].Recycle();
-                        spawnedObjects.Remove(obj);
-
-                        if (obj.TryGetComponent<IRecycleHandler>(out var handler))
-                            handler.OnRecycle(this);
-                        else
-                            OnGameObjectDespawn(obj);
-
-                        if (obj.TryGetComponent<IAfterRecycleHandler>(out var afterHandler))
-                            afterHandler.OnAfterRecycle(this);
-                    }
-
-                    script?.eventMap.Clear();
-                    return true;
-                }
-                else
-                {
-                    Log.PrintWarning($"{obj} is not exist in {prefab} pool cache.");
-                    return false;
-                }
-            }
-            else
-            {
-                Log.PrintWarning($"{obj} is not exist in {prefab} pool.");
-                return false;
-            }
         }
 
         public override bool Recycle(object obj, Type type)
         {
-            if (!type.Equals(typeof(GameObject)))
+            if (type == null || type != typeof(GameObject))
                 return false;
 
             return Recycle((GameObject)obj);
         }
 
+        public bool Recycle(GameObject obj)
+        {
+            if (obj == null)
+            {
+                Log.PrintWarning($"{_prefab.name} pool can not recycle null object.");
+                return false;
+            }
+
+            if (!_known.Contains(obj))
+            {
+                Log.PrintWarning($"{obj} is not exist in {_prefab.name} pool.");
+                return false;
+            }
+
+            if (!_active.Contains(obj))
+            {
+                Log.PrintWarning($"{obj} is not exist in {_prefab.name} pool cache.");
+                return false;
+            }
+
+            var marker = obj.GetComponent<PrefabPoolObject>();
+            InvokePoolEvent(marker, obj, EventTriggerType.BeforeRecycle);
+
+            bool recycleHandled = InvokePoolEvent(marker, obj, EventTriggerType.Recycle);
+            if (!recycleHandled)
+                OnGameObjectDespawn(obj);
+
+            InvokePoolEvent(marker, obj, EventTriggerType.AfterRecycle);
+
+            _active.Remove(obj);
+            _available.Push(obj);
+
+            if (marker != null)
+                marker.ClearEvents();
+
+            return true;
+        }
+
         public bool Recycle(GameObject[] objs)
         {
-            bool ack = true;
-            foreach (var obj in objs)
-                ack = ack && Recycle(obj);
+            if (objs == null)
+                return false;
 
-            return ack;
+            bool allRecycled = true;
+            foreach (var obj in objs)
+                allRecycled = Recycle(obj) && allRecycled;
+
+            return allRecycled;
         }
 
         public override bool RecycleAll()
         {
-            bool ack = true;
-            List<GameObject> tmpLst = new List<GameObject>(spawnedObjects);
-            foreach (var obj in tmpLst)
-                ack = Recycle(obj) && ack;
+            bool allRecycled = true;
+            var snapshot = new GameObject[_active.Count];
+            _active.CopyTo(snapshot);
 
-            return ack;
+            foreach (var obj in snapshot)
+                allRecycled = Recycle(obj) && allRecycled;
+
+            return allRecycled;
         }
 
-        private GameObject GetGameObject()
+        public override void Clear()
         {
-            foreach (var obj in infoMap)
+            RecycleAll();
+
+            var snapshot = new GameObject[_known.Count];
+            _known.CopyTo(snapshot);
+
+            foreach (var go in snapshot)
             {
-                if (obj.Value.isAvalible)
-                    return obj.Key;
+                if (go != null)
+                    UnityEngine.Object.Destroy(go);
             }
 
-            if (autoExpand)
-            {
-                int createSize = Math.Max(size, 1);
-                for (int i = 0; i < createSize; i++)
-                {
-                    AddGameObject(CreatePrefab());
-                }
-                return objects[size - 1];
-            }
-            else
-            {
-                Log.PrintWarning($"{prefab} pool is too small.");
-                return GameObject.Instantiate(CreatePrefab());
-            }
+            _available.Clear();
+            _active.Clear();
+            _known.Clear();
+            size = 0;
         }
 
-        private void GetGameObjectAsync(Action<GameObject> callback)
+        private GameObject HandleAllocation(GameObject go)
         {
-            foreach (var obj in infoMap)
-            {
-                if (obj.Value.isAvalible)
-                {
-                    callback?.Invoke(obj.Key);
-                    return;
-                }
-            }
+            if (go == null)
+                return null;
 
-            if (autoExpand)
-            {
-                poolRoot.StartCoroutine(CreatePrefabAsync(Math.Max(size, 1), gos =>
-                {
-                    foreach (var go in gos)
-                    {
-                        AddGameObject(go);
-                    }
+            var marker = go.GetComponent<PrefabPoolObject>();
+            InvokePoolEvent(marker, go, EventTriggerType.BeforeAllocation);
 
-                    callback?.Invoke(objects[size - 1]);
-                }));
-            }
-            else
-            {
-                Log.PrintWarning($"{prefab} pool is too small.");
-                poolRoot.StartCoroutine(CreatePrefabAsync(1, gos => callback?.Invoke(gos[0])));
-            }
-        }
+            bool allocationHandled = InvokePoolEvent(marker, go, EventTriggerType.Allocation);
+            if (!allocationHandled)
+                OnGameObjectSpawn(go);
 
-        private void GetGameObjectAsync(int size, Action<GameObject[]> callback)
-        {
-            List<GameObject> objs = new List<GameObject>();
-            if (size == 0)
-            {
-                callback?.Invoke(objs.ToArray());
-                return;
-            }
+            InvokePoolEvent(marker, go, EventTriggerType.AfterAllocation);
 
-            foreach (var obj in infoMap)
-            {
-                if (obj.Value.isAvalible)
-                {
-                    objs.Add(obj.Key);
-                    if (objs.Count >= size)
-                    {
-                        callback?.Invoke(objs.ToArray());
-                        return;
-                    }
-                }
-            }
-
-            poolRoot.StartCoroutine(CreatePrefabAsync(size - objs.Count, gos =>
-            {
-                foreach (var go in gos)
-                {
-                    AddGameObject(go);
-                    objs.Add(go);
-                }
-
-                callback?.Invoke(objs.ToArray());
-            }));
-        }
-
-        private GameObject CreatePrefab()
-        {
-            if (!prefab)
-            {
-                Log.PrintError($"{prefab} is null. Pool will return new GameObject.");
-                return new GameObject();
-            }
-
-            var obj = GameObject.Instantiate(prefab);
-            obj.AddComponent<PrefabPoolObject>().Pool = this;
-            return obj;
-        }
-
-        private IEnumerator CreatePrefabAsync(int count, Action<GameObject[]> callback)
-        {
-            if (!prefab)
-            {
-                Log.PrintError($"{prefab} is null. Pool will return new GameObject.");
-                callback?.Invoke(new GameObject[] { new GameObject() });
-                yield return 0;
-            }
-
-            var asyncOp = GameObject.InstantiateAsync(prefab, count);
-            yield return asyncOp;
-
-            callback?.Invoke(asyncOp.Result);
-        }
-
-        private void AddGameObject(GameObject obj)
-        {
-            if (objects.Contains(obj))
-            {
-                Log.Print($"{obj.name} already exist in {prefab} pool.");
-                return;
-            }
-            else
-            {
-                objects.Add(obj);
-                infoMap.Add(obj, new PoolObjectInfo());
-                OnGameObjectAdded(obj);
-                size++;
-            }
-        }
-
-        private GameObject HandleGameObjectAllocation(GameObject go)
-        {
-            if (go.TryGetComponent<PrefabPoolObject>(out var script))
-            {
-                if (script.eventMap.ContainsKey(EventTriggerType.BeforeAllocation))
-                    script.eventMap[EventTriggerType.BeforeAllocation].Invoke(this);
-                else if (go.TryGetComponent<IBeforeAllocationHandler>(out var beforeHandler))
-                    beforeHandler.OnBeforeAllocation(this);
-
-                if (infoMap.ContainsKey(go))
-                    infoMap[go].Allocation();
-
-                if (script.eventMap.ContainsKey(EventTriggerType.Allocation))
-                    script.eventMap[EventTriggerType.Allocation].Invoke(this);
-                else if (go.TryGetComponent<IAllocationHanlder>(out var handler))
-                    handler.OnAllocation(this);
-                else
-                    OnGameObjectSpawn(go);
-
-                if (script.eventMap.ContainsKey(EventTriggerType.AfterAllocation))
-                    script.eventMap[EventTriggerType.AfterAllocation].Invoke(this);
-                else if (go.TryGetComponent<IAfterAllocationHandler>(out var afterHandler))
-                    afterHandler.OnAfterAllocation(this);
-            }
-            else
-            {
-                if (go.TryGetComponent<IBeforeAllocationHandler>(out var beforeHandler))
-                    beforeHandler.OnBeforeAllocation(this);
-
-                if (infoMap.ContainsKey(go))
-                    infoMap[go].Allocation();
-
-                if (go.TryGetComponent<IAllocationHanlder>(out var handler))
-                    handler.OnAllocation(this);
-                else
-                    OnGameObjectSpawn(go);
-
-                if (go.TryGetComponent<IAfterAllocationHandler>(out var afterHandler))
-                    afterHandler.OnAfterAllocation(this);
-            }
-
-            spawnedObjects.Add(go);
+            _active.Add(go);
             return go;
         }
 
-        private bool EnoughObject(int size)
+        private void InvokeBatchAllocation(List<GameObject> objects, Action<GameObject[]> callback)
         {
-            if (autoExpand)
-                return true;
-            else
-                return objects.Count - spawnedObjects.Count >= size;
+            foreach (var go in objects)
+                HandleAllocation(go);
+
+            callback?.Invoke(objects.ToArray());
         }
 
-        private void OnGameObjectAdded(GameObject obj)
+        private bool InvokePoolEvent(PrefabPoolObject marker, GameObject go, EventTriggerType type)
         {
-            obj.name = prefab.name;
-            if (poolRoot)
-                obj.transform.SetParent(poolRoot.transform);
-            obj.transform.position = Vector3.zero;
-            obj.transform.rotation = Quaternion.identity;
+            if (marker != null && marker.TryInvoke(type, this))
+                return true;
+
+            return InvokeInterfaceEvent(go, type);
+        }
+
+        private bool InvokeInterfaceEvent(GameObject go, EventTriggerType type)
+        {
+            switch (type)
+            {
+                case EventTriggerType.BeforeAllocation:
+                    if (go.TryGetComponent<IBeforeAllocationHandler>(out var beforeAllocation))
+                    {
+                        beforeAllocation.OnBeforeAllocation(this);
+                        return true;
+                    }
+                    break;
+                case EventTriggerType.Allocation:
+                    if (go.TryGetComponent<IAllocationHandler>(out var allocation))
+                    {
+                        allocation.OnAllocation(this);
+                        return true;
+                    }
+                    break;
+                case EventTriggerType.AfterAllocation:
+                    if (go.TryGetComponent<IAfterAllocationHandler>(out var afterAllocation))
+                    {
+                        afterAllocation.OnAfterAllocation(this);
+                        return true;
+                    }
+                    break;
+                case EventTriggerType.BeforeRecycle:
+                    if (go.TryGetComponent<IBeforeRecycleHandler>(out var beforeRecycle))
+                    {
+                        beforeRecycle.OnBeforeRecycle(this);
+                        return true;
+                    }
+                    break;
+                case EventTriggerType.Recycle:
+                    if (go.TryGetComponent<IRecycleHandler>(out var recycle))
+                    {
+                        recycle.OnRecycle(this);
+                        return true;
+                    }
+                    break;
+                case EventTriggerType.AfterRecycle:
+                    if (go.TryGetComponent<IAfterRecycleHandler>(out var afterRecycle))
+                    {
+                        afterRecycle.OnAfterRecycle(this);
+                        return true;
+                    }
+                    break;
+            }
+
+            return false;
+        }
+
+        private void StartCreateAsync(int count, Action<GameObject[]> callback)
+        {
+            _root.StartCoroutine(CreateInstancesAsync(count, callback));
+        }
+
+        private IEnumerator CreateInstancesAsync(int count, Action<GameObject[]> callback)
+        {
+            if (count <= 0)
+            {
+                callback?.Invoke(new GameObject[0]);
+                yield break;
+            }
+
+            var operation = UnityEngine.Object.InstantiateAsync(_prefab, count);
+            yield return operation;
+
+            var results = operation.Result;
+            foreach (var go in results)
+            {
+                var marker = go.AddComponent<PrefabPoolObject>();
+                marker.Pool = this;
+            }
+
+            callback?.Invoke(results);
+        }
+
+        private GameObject CreateInstance()
+        {
+            var go = UnityEngine.Object.Instantiate(_prefab);
+            var marker = go.AddComponent<PrefabPoolObject>();
+            marker.Pool = this;
+            return go;
+        }
+
+        private void AddInstance(GameObject obj)
+        {
+            if (obj == null)
+                return;
+
+            if (!_known.Add(obj))
+            {
+                Log.Print($"{obj.name} already exists in {_prefab.name} pool.");
+                return;
+            }
+
+            PrepareObject(obj);
+            _available.Push(obj);
+            size = _known.Count;
+        }
+
+        private bool TryPopAvailable(out GameObject go)
+        {
+            while (_available.Count > 0)
+            {
+                go = _available.Pop();
+                if (go != null)
+                    return true;
+            }
+
+            go = null;
+            return false;
+        }
+
+        private void Expand(int count)
+        {
+            for (int i = 0; i < count; i++)
+                AddInstance(CreateInstance());
+        }
+
+        private int GetExpandCount()
+        {
+            return Math.Max(size, 1);
+        }
+
+        private void PrepareObject(GameObject obj)
+        {
+            obj.name = _prefab.name;
+            obj.transform.SetParent(_root.transform, false);
+            obj.transform.localPosition = Vector3.zero;
+            obj.transform.localRotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
             obj.SetActive(false);
         }
@@ -381,18 +432,11 @@ namespace MLObjectPool
             if (obj == null)
                 return;
 
-            if (poolRoot)
-                obj.transform.SetParent(poolRoot.transform);
-
-            obj.transform.position = Vector3.zero;
-            obj.transform.rotation = Quaternion.identity;
+            obj.transform.SetParent(_root.transform, false);
+            obj.transform.localPosition = Vector3.zero;
+            obj.transform.localRotation = Quaternion.identity;
             obj.transform.localScale = Vector3.one;
             obj.SetActive(false);
-        }
-
-        public override int GetSpawnedObjectCount()
-        {
-            return size - spawnedObjects.Count;
         }
     }
 }

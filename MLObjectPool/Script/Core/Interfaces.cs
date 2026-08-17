@@ -1,8 +1,15 @@
-﻿namespace MLObjectPool
+using System;
+
+namespace MLObjectPool
 {
-    public interface IAllocationHanlder
+    public interface IAllocationHandler
     {
         void OnAllocation(PoolBase pool);
+    }
+
+    [Obsolete("Use IAllocationHandler instead.")]
+    public interface IAllocationHanlder : IAllocationHandler
+    {
     }
 
     public interface IRecycleHandler

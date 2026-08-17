@@ -1,172 +1,205 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace MLObjectPool
 {
-    [DisallowMultipleComponent, ExecuteInEditMode]
+    [DisallowMultipleComponent]
     public sealed class ObjectPoolManager : Singleton<ObjectPoolManager>
     {
-        private List<PoolBase> pools = new List<PoolBase>();
-        private Dictionary<string, PoolBase> poolMap = new Dictionary<string, PoolBase>();
+        private readonly List<PoolBase> pools = new List<PoolBase>();
+        private readonly Dictionary<string, PoolBase> poolMap = new Dictionary<string, PoolBase>();
+        private readonly Dictionary<PoolBase, string> poolNames = new Dictionary<PoolBase, string>();
+        private PrefabPoolRoot poolRoot;
 
         /// <summary>
         /// 所有对象池
         /// </summary>
-        public List<PoolBase> Pools { get => pools; }
+        public List<PoolBase> Pools => pools;
+
         /// <summary>
         /// 所有对象池名称
         /// </summary>
-        public List<string> PoolNames { get => new List<string>(poolMap.Keys); }
+        public List<string> PoolNames => new List<string>(poolMap.Keys);
 
-        /// <summary>
-        /// 创建预制体对象池
-        /// </summary>
-        /// <param name="name">对象池名称（不可重复）</param>
-        /// <param name="go">对象池预制体</param>
-        /// <param name="size">对象池大小</param>
-        /// <param name="autoExpand">是否自动扩容</param>
         public PrefabPool CreatePrefabPool(string name, GameObject go, int size = 0, bool autoExpand = true)
         {
-            if (poolMap.ContainsKey(name))
+            if (go == null)
             {
-                Log.PrintError($"pool {name} already exist.");
+                Log.PrintError($"Create prefab pool {name} failed: prefab is null.");
                 return null;
             }
 
-            PrefabPool pool = new PrefabPool(go, size, autoExpand);
-            pools.Add(pool);
-            poolMap.Add(name, pool);
+            if (size < 0)
+            {
+                Log.PrintError($"Create prefab pool {name} failed: size must be positive.");
+                return null;
+            }
+
+            if (!CanRegister(name))
+                return null;
+
+            var pool = new PrefabPool(go, EnsurePoolRoot(), size, autoExpand);
+            RegisterPool(name, pool);
             return pool;
         }
 
-        /// <summary>
-        /// 创建一个普通对象池
-        /// </summary>
-        /// <typeparam name="T">对象池对象类型</typeparam>
-        /// <param name="name">对象池名称（不可重复）</param>
-        /// <param name="size">对象次初始大小</param>
-        /// <param name="autoExpand">是否自动扩容</param>
         public Pool<T> CreatePool<T>(string name, int size = 0, bool autoExpand = true) where T : new()
         {
-            if (poolMap.ContainsKey(name))
+            return CreatePool<T>(name, size, autoExpand, null);
+        }
+
+        public Pool<T> CreatePool<T>(string name, int size, bool autoExpand, Func<T> factory) where T : new()
+        {
+            if (size < 0)
             {
-                Log.PrintError($"pool {name} already exist.");
+                Log.PrintError($"Create pool {name} failed: size must be positive.");
                 return null;
             }
 
-            Pool<T> pool = new Pool<T>(size, autoExpand);
-            pools.Add(pool);
-            poolMap.Add(name, pool);
+            if (!CanRegister(name))
+                return null;
+
+            var pool = new Pool<T>(size, autoExpand, factory);
+            RegisterPool(name, pool);
+            return pool;
+        }
+
+        public void AddPool(string name, PoolBase pool)
+        {
+            if (pool == null)
+            {
+                Log.PrintError($"Add pool {name} failed: pool is null.");
+                return;
+            }
+
+            if (!CanRegister(name))
+                return;
+
+            if (poolNames.ContainsKey(pool))
+            {
+                Log.PrintError($"Pool {name} has already been registered as {poolNames[pool]}.");
+                return;
+            }
+
+            RegisterPool(name, pool);
+        }
+
+        public PoolBase FindPoolByName(string name)
+        {
+            if (!poolMap.TryGetValue(name, out var pool))
+            {
+                Log.Print($"Pool {name} does not exist.");
+                return null;
+            }
 
             return pool;
         }
 
-        /// <summary>
-        /// 移除一个对象池
-        /// </summary>
-        /// <param name="name">对象池名称</param>
-        public void RemovePool(string name)
+        public bool TryGetPool<T>(string name, out Pool<T> pool) where T : new()
         {
-            if (!poolMap.ContainsKey(name))
-                return;
-
-            poolMap[name].RecycleAll();
-            pools.RemoveAll(p => p == poolMap[name]);
-            poolMap.Remove(name);
-        }
-
-        /// <summary>
-        /// 移除对象池，该对象池将从管理器中全部移除
-        /// </summary>
-        /// <param name="pool">对象池对象</param>
-        public void RemovePool(PoolBase pool)
-        {
-            if (!poolMap.ContainsValue(pool))
-                return;
-
-            pool.RecycleAll();
-            pools.RemoveAll(p => p == pool);
-            foreach (var kv in poolMap.Where(kv => kv.Value == pool).ToList())
+            if (poolMap.TryGetValue(name, out var basePool))
             {
-                poolMap.Remove(kv.Key);
-            }            
-        }
+                pool = basePool as Pool<T>;
+                if (pool == null)
+                    Log.PrintWarning($"Pool {name} is not a Pool<{typeof(T)}>.");
 
-        /// <summary>
-        /// 通过名称查找对象池
-        /// </summary>
-        /// <param name="name">对象池名称（不可重复）</param>
-        public PoolBase FindPoolByName(string name)
-        {
-            if (!poolMap.ContainsKey(name))
-            {
-                Log.Print($"pool {name} does not exists.");
-                return null;
+                return pool != null;
             }
 
-            return poolMap[name];
+            pool = null;
+            return false;
         }
 
-        /// <summary>
-        /// 添加对象池
-        /// </summary>
-        /// <param name="name">对象池名称（不可重复）</param>
-        /// <param name="pool">需要添加的对象池对象</param>
-        public void AddPool(string name, PoolBase pool)
-        {
-            if (poolMap.ContainsKey(name))
-            {
-                Log.PrintError($"pool {name} already exist.");
-                return;
-            }
-
-            pools.Add(pool);
-            poolMap.Add(name, pool);
-        }
-
-        /// <summary>
-        /// 从指定对象池中分配对象
-        /// </summary>
-        /// <param name="name">对象池名称</param>
         public object AllocationFromPool(string name)
         {
-            if (!poolMap.ContainsKey(name))
+            if (!poolMap.TryGetValue(name, out var pool))
             {
-                Log.PrintWarning($"pool {name} does not exists.");
+                Log.PrintWarning($"Pool {name} does not exist.");
                 return null;
             }
 
-            return poolMap[name].Allocation(true);
+            return pool.Allocation(true);
         }
 
-        /// <summary>
-        /// 从指定对象池中回收对象
-        /// </summary>
-        /// <typeparam name="T">对象类型（需与对象池内对象类型一致）</typeparam>
-        /// <param name="name">对象池名称</param>
-        /// <param name="obj">需要回收的对象</param>
         public bool RecycleFromPool<T>(string name, T obj)
         {
-            if (!poolMap.ContainsKey(name))
+            if (!poolMap.TryGetValue(name, out var pool))
             {
-                Log.PrintWarning($"pool {name} does not exists.");
+                Log.PrintWarning($"Pool {name} does not exist.");
                 return false;
             }
 
-            return poolMap[name].Recycle(obj, typeof(T));
+            return pool.Recycle(obj, typeof(T));
+        }
+
+        public void RemovePool(string name)
+        {
+            if (!poolMap.TryGetValue(name, out var pool))
+                return;
+
+            pool.RecycleAll();
+            pool.Clear();
+
+            pools.Remove(pool);
+            poolMap.Remove(name);
+            poolNames.Remove(pool);
+        }
+
+        public void RemovePool(PoolBase pool)
+        {
+            if (pool == null || !poolNames.TryGetValue(pool, out var name))
+                return;
+
+            RemovePool(name);
+        }
+
+        private bool CanRegister(string name)
+        {
+            if (poolMap.ContainsKey(name))
+            {
+                Log.PrintError($"Pool {name} already exists.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private void RegisterPool(string name, PoolBase pool)
+        {
+            pool.Name = name;
+            pools.Add(pool);
+            poolMap.Add(name, pool);
+            poolNames.Add(pool, name);
+        }
+
+        private PrefabPoolRoot EnsurePoolRoot()
+        {
+            if (poolRoot != null)
+                return poolRoot;
+
+            var rootGo = new GameObject("Prefab Pool");
+            rootGo.transform.SetParent(transform, false);
+            poolRoot = rootGo.AddComponent<PrefabPoolRoot>();
+            return poolRoot;
         }
 
         private void OnDestroy()
         {
-            // do some clean
             foreach (var pool in pools)
             {
                 pool.RecycleAll();
+                pool.Clear();
             }
+
             pools.Clear();
             poolMap.Clear();
-            PrefabPool.poolRoot = null;
+            poolNames.Clear();
+
+            if (poolRoot != null)
+                Destroy(poolRoot.gameObject);
+
+            poolRoot = null;
         }
     }
 }

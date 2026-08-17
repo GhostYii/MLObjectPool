@@ -8,7 +8,7 @@ namespace MLObjectPool
     [DisallowMultipleComponent]
     public class PoolEventTrigger : MonoBehaviour,
         IBeforeAllocationHandler,
-        IAllocationHanlder,
+        IAllocationHandler,
         IAfterAllocationHandler,
         IBeforeRecycleHandler,
         IRecycleHandler,

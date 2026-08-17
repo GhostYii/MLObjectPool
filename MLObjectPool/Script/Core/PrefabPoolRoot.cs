@@ -3,5 +3,7 @@
 namespace MLObjectPool
 {
     [DisallowMultipleComponent]
-    public class PrefabPoolRoot : MonoBehaviour { }
+    public class PrefabPoolRoot : MonoBehaviour
+    {
+    }
 }
