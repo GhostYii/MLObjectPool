@@ -7,7 +7,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>MLObjectPool</RootNamespace>
     <AssemblyName>MLObjectPool</AssemblyName>
-    <TargetFrameworkVersion>v4.7</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
   </PropertyGroup>
@@ -15,7 +15,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>..\..\..\..\Unity Projects\Developing\MLObjectPool\Assets\Plugins\</OutputPath>
+    <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -24,7 +24,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>true</Optimize>
-    <OutputPath>..\..\..\Unity Projects\Developing\MLTools\Assets\Plugins\</OutputPath>
+    <OutputPath>bin\Release\</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>false</ConsolePause>
@@ -42,13 +42,12 @@
     <Compile Include="Script\Core\Interfaces.cs" />
     <Compile Include="Script\Core\PrefabPoolObject.cs" />
     <Compile Include="Script\Core\PrefabPoolRoot.cs" />
-    <Compile Include="Script\Singeton.cs" />
+    <Compile Include="Script\Singleton.cs" />
     <Compile Include="Script\Static\Log.cs" />
     <Compile Include="Script\Classes\Constant.cs" />
     <Compile Include="Script\Core\ObjectPoolManager.cs" />
     <Compile Include="Script\Core\PoolBase.cs" />
     <Compile Include="Script\Core\Pool.cs" />
-    <Compile Include="Script\Classes\PoolObjectInfo.cs" />
     <Compile Include="Script\Core\PrefabPool.cs" />
     <Compile Include="Script\Core\PoolEventTrigger.cs" />
   </ItemGroup>
