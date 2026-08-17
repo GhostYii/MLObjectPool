@@ -1,6 +1,6 @@
 {
   "name": "com.ghostyii.mlobjectpool",
-  "version": "2.0.0",
+  "version": "1.0.8",
   "displayName": "MLObjectPool",
   "description": "A high-performance, reliable object pool plugin for Unity.",
   "unity": "2022.3",
