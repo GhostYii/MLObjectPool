@@ -1,131 +1,167 @@
 # MLObjectPool
 
-MLObjectPool is a dll project for Unity game engine authored by Ghostyii.
+MLObjectPool is a DLL-based object pool plugin for the Unity game engine.
 
-## How to add Unity reference in my local repository ?
+## Requirements
 
-You can get answer in this link: https://docs.unity3d.com/Manual/UsingDLL.html
+- Unity 2022.3.20 or newer (`GameObject.InstantiateAsync` is used by prefab pool async APIs)
+- .NET Framework 4.7.1 compatible C# project
 
-## How to use MLObjectPool ?
+## How to add the Unity reference
 
-You can use the singeton script 'ObjectPoolManager' to create default pool or prefab pool.
+See Unity's official guide: https://docs.unity3d.com/Manual/UsingDLL.html
 
-```csharp
-ObjectPoolManager.Instance.CreatePrefabPool(string name, GameObject go, int size, bool autoExpand);
-ObjectPoolManager.Instance.CreatePool<T>(string name, int size, bool autoExpand);
-```
+## Quick Start
 
-The params 'autoExpand' means while the pool is fill, system will auto create more object (raw pool's size) for next allocation. **This means that the object pool will automatically expand to twice the size of the current object pool every time it fills up.**
-
-General allocation and recycle method:
+Use the singleton `ObjectPoolManager` to create pools and allocate/recycle objects.
 
 ```csharp
-ObjectPoolManager.Instance.AllocationFromPool(string name);
-ObjectPoolManager.Instance.RecycleFromPool<T>(string name, T obj);
+var goPool = ObjectPoolManager.Instance.CreatePrefabPool("prefab", prefab, 100, true);
+var dataPool = ObjectPoolManager.Instance.CreatePool<PoolableData>("data", 50, true);
+
+GameObject go = goPool.Allocation();
+PoolableData data = dataPool.Allocation();
 ```
 
-## Pool\<T>
+`autoExpand` controls whether a pool automatically creates more objects after it runs out.
+When expansion occurs, the pool adds `Math.Max(currentSize, 1)` objects at a time.
 
-Pool\<T> is the general pool in MLObjectPool.  
+## Manager API
+
+```csharp
+PrefabPool CreatePrefabPool(string name, GameObject prefab, int size = 0, bool autoExpand = true);
+Pool<T> CreatePool<T>(string name, int size = 0, bool autoExpand = true) where T : new();
+Pool<T> CreatePool<T>(string name, int size, bool autoExpand, Func<T> factory) where T : new();
+
+void AddPool(string name, PoolBase pool);
+PoolBase FindPoolByName(string name);
+bool TryGetPool<T>(string name, out Pool<T> pool) where T : new();
+
+object AllocationFromPool(string name);
+bool RecycleFromPool<T>(string name, T obj);
+
+void RemovePool(string name);
+void RemovePool(PoolBase pool);
+```
+
+`AllocationFromPool` requests an allocation and allows a one-time expansion for that call.
+It does not permanently change the pool's `AutoExpand` setting.
+
+Removing a `PrefabPool` destroys all GameObjects owned by that pool. Removing a
+`Pool<T>` only clears the pool and releases its references.
+
+## Pool<T>
+
+`Pool<T>` is the general-purpose C# object pool. It is intended for plain C# objects,
+not Unity `GameObject` instances. For prefabs, use `PrefabPool`.
 
 ### Create
 
 ```csharp
-//create by pool manager
-var goPool = ObjectPoolManager.Instance.CreatePool<GameObject>("gameObject", 100, true);
+var pool = ObjectPoolManager.Instance.CreatePool<PoolableData>("data", 100, true);
 
-//create by constructor (before v1.0.5)
-var goPool = new Pool<GameObject>(100, true);
-ObjectPoolManager.Instance.AddPool("gameObject", goPool);
+// Custom factory
+var pool2 = ObjectPoolManager.Instance.CreatePool<PoolableData>(
+    "data2", 100, true, () => new PoolableData(42));
 ```
 
-### Allocation
+### Allocate
 
 ```csharp
-public override object Allocation(bool isExpand);
-public T Allocation();
-public T[] Allocation(int size);
+PoolableData obj = pool.Allocation();
+PoolableData[] objs = pool.Allocation(10);
+bool success = pool.TryAllocation(out PoolableData item);
 ```
+
+When `AutoExpand` is false and no object is available:
+
+- `Allocation()` returns `default(T)`;
+- `TryAllocation` returns false;
+- `Allocation(int size)` returns null before allocating any objects.
 
 ### Recycle
 
 ```csharp
-public override bool Recycle(object obj, Type type);
-public bool Recycle(T obj);
-public bool Recycle(T[] objs);
+pool.Recycle(obj);
+pool.Recycle(objs);
+pool.RecycleAll();
 ```
 
 ## PrefabPool
 
+`PrefabPool` manages Unity `GameObject` instances created from a prefab.
+
 ### Create
 
 ```csharp
-//create by pool manager
-var prefabPool = ObjectPoolManager.Instance.CreatePrefabPool("prefab", prefab, 100, true);
-
-//create by constructor (before v1.0.5)
-var prefabPool = new PrefabPool(prefab, 100, true);
-ObjectPoolManager.Instance.AddPool("prefab", prefabPool);
+var pool = ObjectPoolManager.Instance.CreatePrefabPool("prefab", prefab, 100, true);
 ```
 
-### Allocation
+### Allocate
 
 ```csharp
-public GameObject Allocation();
-public GameObject[] Allocation(int size);
-public override object Allocation(bool isExpand);
+GameObject go = pool.Allocation();
+GameObject[] gos = pool.Allocation(10);
+bool success = pool.TryAllocation(out GameObject item);
 
-// async api
-public void AllocationAsync(Action<GameObject> callback);
-public void AllocationAsync(int size, Action<GameObject[]> callback);
+pool.AllocationAsync(go => { });
+pool.AllocationAsync(10, gos => { });
 ```
 
-**only sync version checkout 'sync' branch.**
+When `AutoExpand` is false and no object is available:
+
+- sync APIs return null/false;
+- async callbacks receive null.
 
 ### Recycle
 
 ```csharp
-public bool Recycle(GameObject obj);
-public override bool Recycle(object obj, Type type);
-public bool Recycle(GameObject[] objs);
+pool.Recycle(go);
+pool.Recycle(gos);
+pool.RecycleAll();
 ```
 
-## Can I define my pool ?
+## Custom Pools
 
-Yes.  
-You can create your pool by inherit class '**PoolBase**'.
+Inherit `PoolBase` and implement:
+
+```csharp
+public override int AvailableObjectCount { get; }
+public override int ActiveObjectCount { get; }
+public override object Allocation(bool isExpand);
+public override bool Recycle(object obj, Type type);
+public override bool RecycleAll();
+```
+
+Override `Clear()` when your custom pool owns disposable or scene resources.
 
 ## Interfaces
 
-MLObjectPool support the '**IAllocationHandler**','**IRecycleHandler**','**IBeforeAllocationHandler**','**IBeforeRecycleHandler**','**IAfterAllocationHandler**','**IAfterRecycleHandler**'.  
+The following pool event interfaces are supported:
 
-- IAllocationHandler  
-  This interface's method will be called on object pool allocation.
-- IRecycleHandler  
-  This interface's method will be called on object pool recycle. 
-- IBeforeAllocationHandler  
-  This interface's method will be called before the pool allocation.
-- IBeforeRecycleHandler  
-  This interface's method will be called before the pool recycle.
-- IAfterAllocationHandler  
-  This interface's method will be called after the pool allocation.
-- IAfterRecycleHandler  
-  This interface's method will be called after the pool recycle.
+- `IBeforeAllocationHandler`
+- `IAllocationHandler`
+- `IAfterAllocationHandler`
+- `IBeforeRecycleHandler`
+- `IRecycleHandler`
+- `IAfterRecycleHandler`
 
-### Call sequence:
+The old `IAllocationHanlder` name is kept for compatibility and is marked obsolete.
 
-[Allocation Step]  
+Call sequence:
+
+```
+[Allocation]
 OnBeforeAllocation -> OnAllocation/DefaultAllocation -> OnAfterAllocation
 
-[Recycle Step]  
+[Recycle]
 OnBeforeRecycle -> OnRecycle/DefaultRecycle -> OnAfterRecycle
+```
 
-[**NOTITION**]  
-**If pool object implement the 'IAllocationHandler' or 'IRecycleHandler', the default allocation/recycle method will not called.**
+If a prefab object implements the allocation/recycle handler, the default
+`SetActive`/parent handling is not called automatically.
 
-### Default Allocation/Recycle
-
-If pool object dont implement IPoolObjectHandler, it will invoke the method as follow(take PrefabPool as an example):
+Default prefab handling:
 
 ```csharp
 void OnGameObjectSpawn(GameObject obj)
@@ -136,20 +172,27 @@ void OnGameObjectSpawn(GameObject obj)
 
 void OnGameObjectDespawn(GameObject obj)
 {
-    obj.transform.parent = poolRoot;
-    obj.transform.position = Vector3.zero;
-    obj.transform.rotation = Quaternion.identity;
+    obj.transform.SetParent(poolRoot, false);
+    obj.transform.localPosition = Vector3.zero;
+    obj.transform.localRotation = Quaternion.identity;
     obj.transform.localScale = Vector3.one;
     obj.SetActive(false);
 }
 ```
 
-You can implement interface in any script (just like IPointEnterHandler).  
-**Interface only available in Pool\<T> or PrefabPool.**
-
-If you have your custom pool, you may consider to support those interfaces.
-
 ## Pool Event Trigger
 
-PoolEventTrigger is a Mono script. It just implement all interfaces in MLObjectPool.  
-Useage just like the EventTrigger in uGUI.
+`PoolEventTrigger` is a MonoBehaviour component that implements the pool event
+interfaces and exposes UnityEvent entries in the Inspector, similar to uGUI's
+`EventTrigger`.
+
+Runtime events can also be added through `PrefabPoolObject`:
+
+```csharp
+var marker = go.GetComponent<PrefabPoolObject>();
+marker.AddEvent(EventTriggerType.Allocation, pool => { });
+marker.RemoveEvent(EventTriggerType.Allocation, callback);
+```
+
+Runtime events added through `PrefabPoolObject` are cleared when the object is
+recycled.

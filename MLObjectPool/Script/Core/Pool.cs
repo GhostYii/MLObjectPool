@@ -77,7 +77,6 @@ namespace MLObjectPool
             }
 
             obj = PopAvailable();
-            _active.Add(obj);
 
             if (obj is IBeforeAllocationHandler before)
                 before.OnBeforeAllocation(this);
@@ -88,6 +87,7 @@ namespace MLObjectPool
             if (obj is IAfterAllocationHandler after)
                 after.OnAfterAllocation(this);
 
+            _active.Add(obj);
             return true;
         }
 
@@ -114,7 +114,7 @@ namespace MLObjectPool
 
         public override bool Recycle(object obj, Type type)
         {
-            if (type == null || !typeof(T).IsAssignableFrom(type))
+            if (obj == null || type == null || !typeof(T).IsAssignableFrom(type))
                 return false;
 
             return Recycle((T)obj);
