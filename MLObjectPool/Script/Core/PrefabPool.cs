@@ -54,7 +54,12 @@ namespace MLObjectPool
                 }
             }
 
-            go = PopAvailable();
+            if (!TryPopAvailable(out go))
+            {
+                Log.PrintWarning($"{_prefab.name} pool is too small.");
+                return false;
+            }
+
             return HandleAllocation(go) != null;
         }
 
@@ -76,6 +81,9 @@ namespace MLObjectPool
                 Log.PrintWarning($"{_prefab.name} pool is too small.");
                 return null;
             }
+
+            if (autoExpand && _available.Count < size)
+                Expand(size - _available.Count);
 
             var result = new GameObject[size];
             for (int i = 0; i < size; i++)
@@ -135,8 +143,8 @@ namespace MLObjectPool
             }
 
             var result = new List<GameObject>(size);
-            while (result.Count < size && _available.Count > 0)
-                result.Add(PopAvailable());
+            while (result.Count < size && TryPopAvailable(out var go))
+                result.Add(go);
 
             if (result.Count == size)
             {
@@ -149,8 +157,8 @@ namespace MLObjectPool
                 foreach (var obj in gos)
                     AddInstance(obj);
 
-                while (result.Count < size && _available.Count > 0)
-                    result.Add(PopAvailable());
+                while (result.Count < size && TryPopAvailable(out var go))
+                    result.Add(go);
 
                 if (result.Count < size)
                 {

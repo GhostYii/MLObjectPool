@@ -79,13 +79,22 @@ namespace MLObjectPool
             obj = PopAvailable();
 
             if (obj is IBeforeAllocationHandler before)
+            {
                 before.OnBeforeAllocation(this);
+                obj = (T)(object)before;
+            }
 
             if (obj is IAllocationHandler allocation)
+            {
                 allocation.OnAllocation(this);
+                obj = (T)(object)allocation;
+            }
 
             if (obj is IAfterAllocationHandler after)
+            {
                 after.OnAfterAllocation(this);
+                obj = (T)(object)after;
+            }
 
             _active.Add(obj);
             return true;
@@ -101,6 +110,9 @@ namespace MLObjectPool
                 Log.PrintWarning($"{typeof(T)} pool is too small.");
                 return null;
             }
+
+            if (autoExpand && _available.Count < size)
+                Expand(size - _available.Count);
 
             var result = new T[size];
             for (int i = 0; i < size; i++)
@@ -140,17 +152,26 @@ namespace MLObjectPool
                 return false;
             }
 
+            _active.Remove(obj);
+
             if (obj is IBeforeRecycleHandler before)
+            {
                 before.OnBeforeRecycle(this);
+                obj = (T)(object)before;
+            }
 
             if (obj is IRecycleHandler recycle)
+            {
                 recycle.OnRecycle(this);
+                obj = (T)(object)recycle;
+            }
 
-            _active.Remove(obj);
             _available.Push(obj);
-
             if (obj is IAfterRecycleHandler after)
+            {
                 after.OnAfterRecycle(this);
+                obj = (T)(object)after;
+            }
 
             return true;
         }
