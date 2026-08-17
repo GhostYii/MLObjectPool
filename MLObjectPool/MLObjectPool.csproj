@@ -33,7 +33,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="UnityEngine">
-      <HintPath>C:\Program Files\Unity\Hub\Editor\2022.3.39f1\Editor\Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>D:\Unity Hub\Editor\Unity 6000.0.74f1\Editor\Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
